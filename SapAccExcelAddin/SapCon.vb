@@ -72,16 +72,20 @@ Public Class SapCon
             checkCon = 4
         Catch ex As RfcBaseException
             clearCredentials()
-            MsgBox("Connecting to SAP failed! " & ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SAP BI HFM")
+            MsgBox("Connecting to SAP failed! " & ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SapCon")
             checkCon = 8
         End Try
     End Function
 
     Public Sub setCredentials(aClient As String, aUsername As String, aPassword As String, aLanguage As String)
-        destination.Client = aClient
-        destination.User = aUsername
-        destination.Password = aPassword
-        destination.Language = aLanguage
+        Try
+            destination.Client = aClient
+            destination.User = aUsername
+            destination.Password = aPassword
+            destination.Language = aLanguage
+        Catch ex As System.Exception
+            MsgBox("setCredentials failed! " & ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SapCon")
+        End Try
     End Sub
 
     Public Sub SAPlogoff()
@@ -90,8 +94,12 @@ Public Class SapCon
     End Sub
 
     Public Sub clearCredentials()
-        destination.User = ""
-        destination.Password = Nothing
+        Try
+            destination.User = ""
+            destination.Password = Nothing
+        Catch ex As System.Exception
+            MsgBox("clearCredentials failed! " & ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SapCon")
+        End Try
     End Sub
 
     Public Function getDestination() As RfcCustomDestination

@@ -7,24 +7,28 @@ Public Class SAPAcctngDocument
     Private sapcon As SapCon
 
     Sub New(aSapCon As SapCon)
-        sapcon = aSapCon
-        destination = aSapCon.getDestination()
-        sapcon.checkCon()
+        Try
+            sapcon = aSapCon
+            destination = aSapCon.getDestination()
+            sapcon.checkCon()
+        Catch ex As System.Exception
+            MsgBox("New failed! " & ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SAPAcctngDocument")
+        End Try
+
     End Sub
 
     Public Function post(pBLDAT As Date, pBLART As String, pBUKRS As String,
         pBUDAT As Date, pWAERS As String, pXBLNR As String,
         pBKTXT As String, pFIS_PERIOD As Integer, pACC_PRINCIPLE As String, pData As Collection, pTest As Boolean) As String
 
-        RfcSessionManager.BeginContext(destination)
         post = ""
-        If pTest Then
-            oRfcFunction = destination.Repository.CreateFunction("BAPI_ACC_DOCUMENT_CHECK")
-        Else
-            oRfcFunction = destination.Repository.CreateFunction("BAPI_ACC_DOCUMENT_POST")
-        End If
-
         Try
+            If pTest Then
+                oRfcFunction = destination.Repository.CreateFunction("BAPI_ACC_DOCUMENT_CHECK")
+            Else
+                oRfcFunction = destination.Repository.CreateFunction("BAPI_ACC_DOCUMENT_POST")
+            End If
+            RfcSessionManager.BeginContext(destination)
             Dim lSAPFormat As New SAPFormat
             Dim lSAPWbsElement As New SAPWbsElement(sapcon)
             Dim oDocumentHeader As IRfcStructure = oRfcFunction.GetStructure("DOCUMENTHEADER")
@@ -408,7 +412,8 @@ Public Class SAPAcctngDocument
                 post = "Error: No Return message from SAP"
             End If
         Catch Ex As System.Exception
-            MsgBox("Error: Exception " & ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SAPAcctngDocument")
+            MsgBox("Error: Exception " & Ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SAPAcctngDocument")
+            post = "Error: Exception in posting"
         Finally
             RfcSessionManager.EndContext(destination)
         End Try
