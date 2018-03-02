@@ -9,20 +9,28 @@ Public Class SAPWbsElement
     Sub New(aSapCon As SapCon)
         sapcon = aSapCon
         destination = aSapCon.getDestination()
-        oRfcFunction = destination.Repository.CreateFunction("Z_CO_PS_PSP_INTERNAL")
+        Try
+            oRfcFunction = destination.Repository.CreateFunction("Z_CO_PS_PSP_INTERNAL")
+        Catch ex As Exception
+            oRfcFunction = Nothing
+        End Try
     End Sub
 
     Public Function GetPspnr(pPOSID As String) As String
-        sapcon.checkCon()
-        Try
-            oRfcFunction.SetValue("I_POSID", pPOSID)
-            oRfcFunction.Invoke(destination)
-            GetPspnr = oRfcFunction.GetValue("E_PSPNR")
-            Exit Function
-        Catch ex As Exception
-            MsgBox("Exception in GetPspnr! " & ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SAPWbsElement")
-            GetPspnr = "Fehler"
-        End Try
+        If Not oRfcFunction Is Nothing Then
+            sapcon.checkCon()
+            Try
+                oRfcFunction.SetValue("I_POSID", pPOSID)
+                oRfcFunction.Invoke(destination)
+                GetPspnr = oRfcFunction.GetValue("E_PSPNR")
+                Exit Function
+            Catch ex As Exception
+                MsgBox("Exception in GetPspnr! " & ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SAPWbsElement")
+                GetPspnr = "Fehler"
+            End Try
+        Else
+            GetPspnr = pPOSID
+        End If
     End Function
 
 End Class

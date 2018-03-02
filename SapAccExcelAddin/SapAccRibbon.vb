@@ -4,9 +4,9 @@ Imports SAP.Middleware.Connector
 Public Class SapAccRibbon
     Private aSapCon
     Private aSapGeneral
-    Const CP = 41 'column of post indicator
-    Const CD = 42 'column of first header value
-    Const CM = 51 'column of return message
+    Const CP = 45 'column of post indicator
+    Const CD = 46 'column of first header value
+    Const CM = 55 'column of return message
 
     Private Sub ButtonCheckAccDoc_Click(sender As Object, e As RibbonControlEventArgs) Handles ButtonCheckAccDoc.Click
         Dim aSapConRet As Integer
@@ -92,7 +92,6 @@ Public Class SapAccRibbon
         Dim aBLDAT As Date
         Dim aBLART As String
         Dim aBUKRS As String
-        Dim aCOMP_CODE As String
         Dim aBUDAT As Date
         Dim aWAERS As String
         Dim aXBLNR As String
@@ -100,7 +99,6 @@ Public Class SapAccRibbon
         Dim aACC_PRINCIPLE As String
         Dim aFIS_PERIOD As Integer
 
-        Dim aGEGKO As String
         Dim aKONTO As String
         Dim aBETRA As Double
 
@@ -169,21 +167,27 @@ Public Class SapAccRibbon
             aLIFNR = aDws.Cells(i, 5).Value
             aKOSTL = aDws.Cells(i, 7).Value
             aAUFNR = aDws.Cells(i, 8).Value
-            aSGTXT = aDws.Cells(i, 32).Value
-            aMWSKZ = aDws.Cells(i, 33).Value
-            aBETRA = CDbl(aDws.Cells(i, 35).Value)
+            aSGTXT = aDws.Cells(i, 35).Value
+            aMWSKZ = aDws.Cells(i, 36).Value
+            aBETRA = CDbl(aDws.Cells(i, 39).Value)
+
             aSAPDocItem = aSAPDocItem.create(aDws.Cells(i, 1).Value, aKONTO, aBETRA, aMWSKZ, aSGTXT, aAUFNR, aMATNR, aWERKS, aKOSTL, aLIFNR,
                                             aDws.Cells(i, 12).Value, aDws.Cells(i, 13).Value, aDws.Cells(i, 14).Value, aDws.Cells(i, 15).Value,
-                                            aDws.Cells(i, 16).Value, aDws.Cells(i, 17).Value, aDws.Cells(i, 19).Value, aDws.Cells(i, 28).Value,
-                                            aDws.Cells(i, 29).Value, aDws.Cells(i, 34).Value,
-                                            CDbl(aDws.Cells(i, 36).Value), aCURRTYP2, aWAERS2,
-                                            CDbl(aDws.Cells(i, 37).Value), aCURRTYP3, aWAERS3,
-                                            CDbl(aDws.Cells(i, 38).Value), aCURRTYP4, aWAERS4,
+                                            aDws.Cells(i, 16).Value, aDws.Cells(i, 17).Value, aDws.Cells(i, 19).Value,
+                                            aDws.Cells(i, 28).Value, aDws.Cells(i, 32).Value, aDws.Cells(i, 38).Value,
+                                            CDbl(aDws.Cells(i, 40).Value), aCURRTYP2, aWAERS2,
+                                            CDbl(aDws.Cells(i, 41).Value), aCURRTYP3, aWAERS3,
+                                            CDbl(aDws.Cells(i, 42).Value), aCURRTYP4, aWAERS4,
                                             aDws.Cells(i, 9).Value, aDws.Cells(i, 21).Value, aDws.Cells(i, 6).Value,
-                                            aDws.Cells(i, 23).Value, aDws.Cells(i, 24).Value, aDws.Cells(i, 39).Value,
-                                            aDws.Cells(i, 10).Value, aDws.Cells(i, 11).Value, aDws.Cells(i, CD + 4).Value,
-                                            aDws.Cells(i, 22).Value, aDws.Cells(i, 20).Value, aDws.Cells(i, 25).Value, aDws.Cells(i, 26).Value, aDws.Cells(i, 27).Value,
-                                            aDws.Cells(i, 18).Value, aDws.Cells(i, 40).Value, aDws.Cells(i, 30).Value, aDws.Cells(i, 31).Value)
+                                            aDws.Cells(i, 23).Value, aDws.Cells(i, 24).Value, aDws.Cells(i, 43).Value,
+                                            aDws.Cells(i, 10).Value, aDws.Cells(i, 11).Value, aDws.Cells(i, CD + 4).Value, aDws.Cells(i, 22).Value,
+                                            aDws.Cells(i, 20).Value, aDws.Cells(i, 25).Value, aDws.Cells(i, 26).Value, aDws.Cells(i, 27).Value, aDws.Cells(i, 18).Value,
+                                            aDws.Cells(i, 44).Value, aDws.Cells(i, 33).Value, aDws.Cells(i, 34).Value,
+                                            aDws.Cells(i, 37).Value, aDws.Cells(i, 28).Value, aDws.Cells(i, 29).Value, aDws.Cells(i, 30).Value)
+            If aSAPDocItem.BUPLA <> "" And (aSAPDocItem.ZZDIM06 <> "" Or aSAPDocItem.ZZDIM07 <> "") Then
+                MsgBox("Business place can not be used together with OEM or Region in the Customer specific fields in line " & i, vbCritical + vbOKOnly)
+                Exit Sub
+            End If
             aData.Add(aSAPDocItem)
             If (aDws.Cells(i, CP).Value = "X" Or aDws.Cells(i, CP).Value = "x") Then
                 If InStr(1, aDws.Cells(i, CM).Value, "BKPFF") = 0 Then
@@ -197,57 +201,56 @@ Public Class SapAccRibbon
                     Else
                         aBLDAT = adBLDAT
                     End If
-                    If aDws.Cells(i, CD + 2).Value <> "" Then
-                        aXBLNR = aDws.Cells(i, CD + 2).Value
+                    If CStr(aDws.Cells(i, CD + 2).Value) <> "" Then
+                        aXBLNR = CStr(aDws.Cells(i, CD + 2).Value)
                     Else
                         aXBLNR = adXBLNR
                     End If
-                    If aDws.Cells(i, CD + 3).Value <> "" Then
-                        aBKTXT = aDws.Cells(i, CD + 3).Value
+                    If CStr(aDws.Cells(i, CD + 3).Value) <> "" Then
+                        aBKTXT = CStr(aDws.Cells(i, CD + 3).Value)
                     Else
                         aBKTXT = adBKTXT
                     End If
-                    If aDws.Cells(i, CD + 4).Value <> "" Then
-                        aBUKRS = aDws.Cells(i, CD + 4).Value
+                    If CStr(aDws.Cells(i, CD + 4).Value) <> "" Then
+                        aBUKRS = CStr(aDws.Cells(i, CD + 4).Value)
                     Else
                         aBUKRS = adBUKRS
                     End If
-                    If aDws.Cells(i, CD + 5).Value <> "" Then
-                        aWAERS = aDws.Cells(i, CD + 5).Value
+                    If CStr(aDws.Cells(i, CD + 5).Value) <> "" Then
+                        aWAERS = CStr(aDws.Cells(i, CD + 5).Value)
                     Else
                         aWAERS = adWAERS
                     End If
-                    If aDws.Cells(i, CD + 6).Value <> "" Then
-                        aBLART = aDws.Cells(i, CD + 6).Value
+                    If CStr(aDws.Cells(i, CD + 6).Value) <> "" Then
+                        aBLART = CStr(aDws.Cells(i, CD + 6).Value)
                     Else
                         aBLART = adBLART
                     End If
-                    If aDws.Cells(i, CD + 7).Value <> "" Then
-                        aFIS_PERIOD = aDws.Cells(i, CD + 7).Value
+                    If CStr(aDws.Cells(i, CD + 7).Value) <> "" Then
+                        aFIS_PERIOD = CStr(aDws.Cells(i, CD + 7).Value)
                     Else
                         aFIS_PERIOD = adFIS_PERIOD
                     End If
-                    If aDws.Cells(i, CD + 8).Value <> "" Then
-                        aACC_PRINCIPLE = aDws.Cells(i, CD + 8).Value
+                    If CStr(aDws.Cells(i, CD + 8).Value) <> "" Then
+                        aACC_PRINCIPLE = CStr(aDws.Cells(i, CD + 8).Value)
                     Else
                         aACC_PRINCIPLE = adACC_PRINCIPLE
                     End If
-                    If InStr(1, aDws.Cells(i, CM).Value, "BKPFF") = 0 Then
+                    If InStr(1, CStr(aDws.Cells(i, CM).Value), "BKPFF") = 0 Then
                         aRetStr = aSAPAcctngDocument.post(aBLDAT, aBLART, aBUKRS, aBUDAT, aWAERS, aXBLNR, aBKTXT, aFIS_PERIOD, aACC_PRINCIPLE, aData, pTest)
-                        aDws.Cells(i, CM) = aRetStr
-                        aDws.Cells(i, CM + 1) = ExtractDocNumberFromMessage(aRetStr)
+                        aDws.Cells(i, CM) = CStr(aRetStr)
+                        aDws.Cells(i, CM + 1) = CStr(ExtractDocNumberFromMessage(aRetStr))
                     End If
                 End If
-                aDws.Cells(i, CM + 1) = ExtractDocNumberFromMessage(aDws.Cells(i, CM).Value)
+                aDws.Cells(i, CM + 1) = CStr(ExtractDocNumberFromMessage(aDws.Cells(i, CM).Value))
                 aData = New Collection
             End If
             i = i + 1
-        Loop While aDws.Cells(i, 1).value <> ""
+        Loop While CStr(aDws.Cells(i, 1).value) <> ""
     End Sub
 
     Private Function ExtractDocNumberFromMessage(Message As String) As String
         Dim aPos As Integer
-        Dim aTemp As String
         Dim aLen As Long
 
         aLen = Len(Message)

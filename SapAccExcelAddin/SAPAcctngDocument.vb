@@ -69,6 +69,9 @@ Public Class SAPAcctngDocument
                     oAccountGl.SetValue("ITEMNO_ACC", lCnt)
                     oAccountGl.SetValue("GL_ACCOUNT", lSAPFormat.unpack(lRow.NEWKO, 10))
                     oAccountGl.SetValue("ITEM_TEXT", lRow.SGTXT)
+                    If lRow.TXJCD <> "" Then
+                        oAccountGl.SetValue("TAXJURCODE", lRow.TXJCD)
+                    End If
                     oAccountGl.SetValue("TAX_CODE", lRow.MWSKZ)
                     oAccountGl.SetValue("ALLOC_NMBR", lRow.ALLOC_NMBR)
                     oAccountGl.SetValue("REF_KEY_3", lRow.REF_KEY_3)
@@ -121,6 +124,21 @@ Public Class SAPAcctngDocument
                         oExtension2.SetValue("STRUCTURE", "ZFI_EXT2_ZZHFMC3")
                         oExtension2.SetValue("VALUEPART1", lSAPFormat.unpack(CStr(lCnt), 10))
                         oExtension2.SetValue("VALUEPART2", lSAPFormat.unpack(lRow.ZZHFMC3, 3))
+                    End If
+                    ' Region, OEM (for Magna Template System)
+                    If lRow.ZZDIM06 <> "" Or lRow.ZZDIM07 <> "" Then
+                        oExtension2.Append()
+                        oExtension2.SetValue("STRUCTURE", "ZFI_BAPIEXT_ST")
+                        oExtension2.SetValue("VALUEPART1", lSAPFormat.unpack(CStr(lCnt), 10))
+                        oExtension2.SetValue("VALUEPART2", lSAPFormat.fixLen(lRow.ZZDIM06, 20))
+                        oExtension2.SetValue("VALUEPART3", lSAPFormat.fixLen(lRow.ZZDIM07, 20))
+                    End If
+                    ' Business Place
+                    If lRow.BUPLA <> "" Then
+                        oExtension2.Append()
+                        oExtension2.SetValue("STRUCTURE", "ZFI_BAPIEXT_ST")
+                        oExtension2.SetValue("VALUEPART1", lSAPFormat.unpack(CStr(lCnt), 10))
+                        oExtension2.SetValue("VALUEPART2", lSAPFormat.unpack(lRow.BUPLA, 4))
                     End If
                     ' CO-PA charactereistics
                     If lRow.PA = "X" Or lRow.PA = "x" Then
@@ -231,7 +249,8 @@ Public Class SAPAcctngDocument
                         End If
                     Else
                         oAccountGl.SetValue("COSTCENTER", lSAPFormat.unpack(lRow.KOSTL, 10))
-                        oAccountGl.SetValue("MATERIAL", lSAPFormat.unpack(lRow.MATNR, 18))
+                        '                        oAccountGl.SetValue("MATERIAL", lSAPFormat.unpack(lRow.MATNR, 18))
+                        oAccountGl.SetValue("MATERIAL", lRow.MATNR)
                         oAccountGl.SetValue("PLANT", lRow.WERKS)
                         oAccountGl.SetValue("VENDOR_NO", lSAPFormat.unpack(lRow.LIFNR, 10))
                         oAccountGl.SetValue("ORDERID", lSAPFormat.unpack(lRow.AUFNR, 12))
@@ -249,7 +268,7 @@ Public Class SAPAcctngDocument
                         Dim lTaxBase As Double
                         Dim lTaxLines As Integer
                         Dim oTAX_ITEM_OUT As IRfcTable
-                        oTAX_ITEM_OUT = aSAPCalcTaxesFromGross.getTaxAmount(pBUKRS, lRow.MWSKZ, pWAERS, pBUDAT, lRow.Betrag)
+                        oTAX_ITEM_OUT = aSAPCalcTaxesFromGross.getTaxAmount(pBUKRS, lRow.MWSKZ, pWAERS, pBUDAT, lRow.Betrag, lRow.TXJCD)
                         lTaxLines = oTAX_ITEM_OUT.Count
                         ' calculate the taxsum
                         lTaxSum = 0
@@ -267,6 +286,7 @@ Public Class SAPAcctngDocument
                                 oAccountTax.SetValue("ITEMNO_ACC", lCnt)
                                 oAccountTax.SetValue("COND_KEY", oTAX_ITEM_OUT(i).GetValue("KSCHL"))
                                 oAccountTax.SetValue("TAX_CODE", oTAX_ITEM_OUT(i).GetValue("MWSKZ"))
+                                oAccountTax.SetValue("TAXJURCODE", oTAX_ITEM_OUT(i).GetValue("TXJCD"))
                                 oCurrencyAmount.Append()
                                 oCurrencyAmount.SetValue("ITEMNO_ACC", lCnt)
                                 oCurrencyAmount.SetValue("CURRENCY", pWAERS)
@@ -319,6 +339,13 @@ Public Class SAPAcctngDocument
                     If lRow.SP_GL_IND <> "" Then
                         oAccountReceivable.SetValue("SP_GL_IND", lRow.SP_GL_IND)
                     End If
+                    ' Business Place
+                    If lRow.BUPLA <> "" Then
+                        oExtension2.Append()
+                        oExtension2.SetValue("STRUCTURE", "ZFI_BAPIEXT_ST")
+                        oExtension2.SetValue("VALUEPART1", lSAPFormat.unpack(CStr(lCnt), 10))
+                        oExtension2.SetValue("VALUEPART2", lSAPFormat.unpack(lRow.BUPLA, 4))
+                    End If
                     oCurrencyAmount.Append()
                     oCurrencyAmount.SetValue("ITEMNO_ACC", lCnt)
                     oCurrencyAmount.SetValue("CURRENCY", pWAERS)
@@ -366,6 +393,13 @@ Public Class SAPAcctngDocument
                     End If
                     If lRow.SP_GL_IND <> "" Then
                         oAccountPayable.SetValue("SP_GL_IND", lRow.SP_GL_IND)
+                    End If
+                    ' Business Place
+                    If lRow.BUPLA <> "" Then
+                        oExtension2.Append()
+                        oExtension2.SetValue("STRUCTURE", "ZFI_BAPIEXT_ST")
+                        oExtension2.SetValue("VALUEPART1", lSAPFormat.unpack(CStr(lCnt), 10))
+                        oExtension2.SetValue("VALUEPART2", lSAPFormat.unpack(lRow.BUPLA, 4))
                     End If
                     oCurrencyAmount.Append()
                     oCurrencyAmount.SetValue("ITEMNO_ACC", lCnt)

@@ -10,4 +10,10 @@
         End If
     End Function
 
+    Public Function fixLen(val As String, length As Integer) As String
+        Dim EmptyStr As String
+        EmptyStr = "                                                            "
+        fixLen = Left(EmptyStr, length - Len(val)) & val
+    End Function
+
 End Class

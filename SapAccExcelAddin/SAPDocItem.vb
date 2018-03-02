@@ -47,6 +47,10 @@
     Public REF_KEY_3 As String
     Public PMNT_BLOCK As String
     Public SP_GL_IND As String
+    Public TXJCD As String
+    Public ZZDIM06 As String
+    Public ZZDIM07 As String
+    Public BUPLA As String
 
     Public Function create(pACCTYPE As String, pNEWKO As String, pBetrag As Double, pMWSKZ As String, pSGTXT As String,
                        pAUFNR As String, pMATNR As String, pWERKS As String, pKOSTL As String,
@@ -61,7 +65,8 @@
                        pTRADE_ID As String, pBUS_AREA As String, pBEWAR As String,
                        pNETWORK As String, pACTIVITY As String, pCOMP_CODE As String, pPARTNER_SEGMENT As String,
                        pPART_PRCTR As String, pZZETXT As String, pZZHFMC1 As String, pZZHFMC3 As String, pMTART As String,
-                       pREF_KEY_3 As String, pPMNT_BLOCK As String, pSP_GL_IND As String) As SAPDocItem
+                       pREF_KEY_3 As String, pPMNT_BLOCK As String, pSP_GL_IND As String,
+                       pTXJCD As String, pZZDIM06 As String, pZZDIM07 As String, pBUPLA As String) As SAPDocItem
         Dim aSAPDocItem As New SAPDocItem
         aSAPDocItem.ACCTYPE = pACCTYPE
         aSAPDocItem.NEWKO = pNEWKO
@@ -111,6 +116,10 @@
         aSAPDocItem.REF_KEY_3 = pREF_KEY_3
         aSAPDocItem.PMNT_BLOCK = pPMNT_BLOCK
         aSAPDocItem.SP_GL_IND = pSP_GL_IND
+        aSAPDocItem.TXJCD = pTXJCD
+        aSAPDocItem.ZZDIM06 = pZZDIM06
+        aSAPDocItem.ZZDIM07 = pZZDIM07
+        aSAPDocItem.BUPLA = pBUPLA
 
         create = aSAPDocItem
     End Function

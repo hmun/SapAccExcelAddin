@@ -10,6 +10,7 @@ Public Class SapGeneral
         Dim assembly As Assembly
         Dim fileVersionInfo As FileVersionInfo
         Dim aVersion As String
+        Dim theVersion As Version
 
         aWB = Globals.SapAccAddIn.Application.ActiveWorkbook
         Try
@@ -23,11 +24,16 @@ Public Class SapGeneral
         aFromVersion = aCws.Cells(13, 2).Value
         aToVersion = aCws.Cells(14, 2).Value
 
-        assembly = System.Reflection.Assembly.GetExecutingAssembly()
-        fileVersionInfo = System.Diagnostics.FileVersionInfo.GetVersionInfo(assembly.Location)
-        aVersion = fileVersionInfo.ProductVersion
-
+        Try
+            assembly = System.Reflection.Assembly.GetExecutingAssembly()
+            fileVersionInfo = System.Diagnostics.FileVersionInfo.GetVersionInfo(assembly.Location)
+            aVersion = fileVersionInfo.ProductVersion
+        Catch Exc As System.Exception
+            aVersion = "1.0.2.0"
+        End Try
+        aVersion = "1.0.2.0"
         If aVersion > aToVersion Or aVersion < aFromVersion Then
+            ' try Publish Version
             MsgBox("The Version of the Excel-Template is not valid for this Add-In. Please use a Template that is valid for version " & aVersion,
                    MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SapGeneral")
             checkVersion = False
