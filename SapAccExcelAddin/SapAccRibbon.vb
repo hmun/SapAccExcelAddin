@@ -16,8 +16,8 @@ Public Class SapAccRibbon
         aSapConRet = 0
         If aSapCon Is Nothing Then
             aSapCon = New SapCon
-            aSapConRet = aSapCon.checkCon()
         End If
+        aSapConRet = aSapCon.checkCon()
         If aSapConRet = 0 Then
             SAP_AccDoc_execute(pTest:=True)
         End If
@@ -30,8 +30,8 @@ Public Class SapAccRibbon
         aSapConRet = 0
         If aSapCon Is Nothing Then
             aSapCon = New SapCon
-            aSapConRet = aSapCon.checkCon()
         End If
+        aSapConRet = aSapCon.checkCon()
         If aSapConRet = 0 Then
             SAP_AccDoc_execute(pTest:=False)
         End If

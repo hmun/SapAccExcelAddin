@@ -43,11 +43,11 @@
     Private Sub InitializeComponent()
         Me.SapAcc = Me.Factory.CreateRibbonTab
         Me.Accounting = Me.Factory.CreateRibbonGroup
+        Me.ButtonCheckAccDoc = Me.Factory.CreateRibbonButton
+        Me.ButtonPostAccDoc = Me.Factory.CreateRibbonButton
         Me.Logon = Me.Factory.CreateRibbonGroup
         Me.ButtonLogon = Me.Factory.CreateRibbonButton
         Me.ButtonLogoff = Me.Factory.CreateRibbonButton
-        Me.ButtonCheckAccDoc = Me.Factory.CreateRibbonButton
-        Me.ButtonPostAccDoc = Me.Factory.CreateRibbonButton
         Me.SapAcc.SuspendLayout()
         Me.Accounting.SuspendLayout()
         Me.Logon.SuspendLayout()
@@ -68,6 +68,16 @@
         Me.Accounting.Label = "Accounting"
         Me.Accounting.Name = "Accounting"
         '
+        'ButtonCheckAccDoc
+        '
+        Me.ButtonCheckAccDoc.Label = "Check Acc Document"
+        Me.ButtonCheckAccDoc.Name = "ButtonCheckAccDoc"
+        '
+        'ButtonPostAccDoc
+        '
+        Me.ButtonPostAccDoc.Label = "Post Acc Document"
+        Me.ButtonPostAccDoc.Name = "ButtonPostAccDoc"
+        '
         'Logon
         '
         Me.Logon.Items.Add(Me.ButtonLogon)
@@ -84,16 +94,6 @@
         '
         Me.ButtonLogoff.Label = "SAP Logoff"
         Me.ButtonLogoff.Name = "ButtonLogoff"
-        '
-        'ButtonCheckAccDoc
-        '
-        Me.ButtonCheckAccDoc.Label = "Check Acc Document"
-        Me.ButtonCheckAccDoc.Name = "ButtonCheckAccDoc"
-        '
-        'ButtonPostAccDoc
-        '
-        Me.ButtonPostAccDoc.Label = "Post Acc Document"
-        Me.ButtonPostAccDoc.Name = "ButtonPostAccDoc"
         '
         'SapAccRibbon
         '
