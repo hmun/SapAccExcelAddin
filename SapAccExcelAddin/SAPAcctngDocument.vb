@@ -19,7 +19,7 @@ Public Class SAPAcctngDocument
 
     Public Function post(pBLDAT As Date, pBLART As String, pBUKRS As String,
         pBUDAT As Date, pWAERS As String, pXBLNR As String,
-        pBKTXT As String, pFIS_PERIOD As Integer, pACC_PRINCIPLE As String, pData As Collection, pTest As Boolean) As String
+        pBKTXT As String, pFIS_PERIOD As Integer, pACC_PRINCIPLE As String, pData As Collection, pTest As Boolean, pFKBERNAME As String) As String
 
         post = ""
         Try
@@ -136,7 +136,7 @@ Public Class SAPAcctngDocument
                     ' Business Place
                     If lRow.BUPLA <> "" Then
                         oExtension2.Append()
-                        oExtension2.SetValue("STRUCTURE", "ZFI_BAPIEXT_ST")
+                        oExtension2.SetValue("STRUCTURE", "ZFI_BAPIEXT_BUPLA")
                         oExtension2.SetValue("VALUEPART1", lSAPFormat.unpack(CStr(lCnt), 10))
                         oExtension2.SetValue("VALUEPART2", lSAPFormat.unpack(lRow.BUPLA, 4))
                     End If
@@ -152,40 +152,54 @@ Public Class SAPAcctngDocument
                             oCriteria.SetValue("CHARACTER", pBUKRS)
                         End If
                         '  VKORG
-                        oCriteria.Append()
-                        oCriteria.SetValue("ITEMNO_ACC", lCnt)
-                        oCriteria.SetValue("FIELDNAME", "VKORG")
-                        oCriteria.SetValue("CHARACTER", lRow.VKORG)
+                        If lRow.VKORG <> "" Then
+                            oCriteria.Append()
+                            oCriteria.SetValue("ITEMNO_ACC", lCnt)
+                            oCriteria.SetValue("FIELDNAME", "VKORG")
+                            oCriteria.SetValue("CHARACTER", lRow.VKORG)
+                        End If
                         '  VTWEG
-                        oCriteria.Append()
-                        oCriteria.SetValue("ITEMNO_ACC", lCnt)
-                        oCriteria.SetValue("FIELDNAME", "VTWEG")
-                        oCriteria.SetValue("CHARACTER", lSAPFormat.unpack(lRow.VTWEG, 2))
+                        If lRow.VTWEG <> "" Then
+                            oCriteria.Append()
+                            oCriteria.SetValue("ITEMNO_ACC", lCnt)
+                            oCriteria.SetValue("FIELDNAME", "VTWEG")
+                            oCriteria.SetValue("CHARACTER", lSAPFormat.unpack(lRow.VTWEG, 2))
+                        End If
                         '  SPART
-                        oCriteria.Append()
-                        oCriteria.SetValue("ITEMNO_ACC", lCnt)
-                        oCriteria.SetValue("FIELDNAME", "SPART")
-                        oCriteria.SetValue("CHARACTER", lSAPFormat.unpack(lRow.SPART, 2))
+                        If lRow.SPART <> "" Then
+                            oCriteria.Append()
+                            oCriteria.SetValue("ITEMNO_ACC", lCnt)
+                            oCriteria.SetValue("FIELDNAME", "SPART")
+                            oCriteria.SetValue("CHARACTER", lSAPFormat.unpack(lRow.SPART, 2))
+                        End If
                         '  KNDNR
-                        oCriteria.Append()
-                        oCriteria.SetValue("ITEMNO_ACC", lCnt)
-                        oCriteria.SetValue("FIELDNAME", "KNDNR")
-                        oCriteria.SetValue("CHARACTER", lSAPFormat.unpack(lRow.KNDNR, 10))
+                        If lRow.KNDNR <> "" Then
+                            oCriteria.Append()
+                            oCriteria.SetValue("ITEMNO_ACC", lCnt)
+                            oCriteria.SetValue("FIELDNAME", "KNDNR")
+                            oCriteria.SetValue("CHARACTER", lSAPFormat.unpack(lRow.KNDNR, 10))
+                        End If
                         '  WERKS
-                        oCriteria.Append()
-                        oCriteria.SetValue("ITEMNO_ACC", lCnt)
-                        oCriteria.SetValue("FIELDNAME", "WERKS")
-                        oCriteria.SetValue("CHARACTER", lRow.WERKS)
+                        If lRow.WERKS <> "" Then
+                            oCriteria.Append()
+                            oCriteria.SetValue("ITEMNO_ACC", lCnt)
+                            oCriteria.SetValue("FIELDNAME", "WERKS")
+                            oCriteria.SetValue("CHARACTER", lRow.WERKS)
+                        End If
                         '  ARTNR
-                        oCriteria.Append()
-                        oCriteria.SetValue("ITEMNO_ACC", lCnt)
-                        oCriteria.SetValue("FIELDNAME", "ARTNR")
-                        oCriteria.SetValue("CHARACTER", lRow.MATNR)
+                        If lRow.MATNR <> "" Then
+                            oCriteria.Append()
+                            oCriteria.SetValue("ITEMNO_ACC", lCnt)
+                            oCriteria.SetValue("FIELDNAME", "ARTNR")
+                            oCriteria.SetValue("CHARACTER", lRow.MATNR)
+                        End If
                         '  KTGRM
-                        oCriteria.Append()
-                        oCriteria.SetValue("ITEMNO_ACC", lCnt)
-                        oCriteria.SetValue("FIELDNAME", "KTGRM")
-                        oCriteria.SetValue("CHARACTER", lSAPFormat.unpack(lRow.KTGRM, 2))
+                        If lRow.KTGRM <> "" Then
+                            oCriteria.Append()
+                            oCriteria.SetValue("ITEMNO_ACC", lCnt)
+                            oCriteria.SetValue("FIELDNAME", "KTGRM")
+                            oCriteria.SetValue("CHARACTER", lSAPFormat.unpack(lRow.KTGRM, 2))
+                        End If
                         '  GSBER
                         If lRow.BUS_AREA <> "" Then
                             oCriteria.Append()
@@ -193,7 +207,7 @@ Public Class SAPAcctngDocument
                             oCriteria.SetValue("FIELDNAME", "GSBER")
                             oCriteria.SetValue("CHARACTER", lSAPFormat.unpack(lRow.BUS_AREA, 4))
                         End If
-                        '  GSBER
+                        '  SEGMENT
                         If lRow.SEGMENT <> "" Then
                             oCriteria.Append()
                             oCriteria.SetValue("ITEMNO_ACC", lCnt)
@@ -221,11 +235,11 @@ Public Class SAPAcctngDocument
                             oCriteria.SetValue("FIELDNAME", "PPRCTR")
                             oCriteria.SetValue("CHARACTER", lRow.PART_PRCTR)
                         End If
-                        ' FKBER
+                        ' FUNC_AREA
                         If lRow.FUNC_AREA <> "" Then
                             oCriteria.Append()
                             oCriteria.SetValue("ITEMNO_ACC", lCnt)
-                            oCriteria.SetValue("FIELDNAME", "WWFBR")
+                            oCriteria.SetValue("FIELDNAME", pFKBERNAME)
                             oCriteria.SetValue("CHARACTER", lSAPFormat.unpack(lRow.FUNC_AREA, 4))
                         End If
                         ' ZZHFMC3
@@ -249,7 +263,7 @@ Public Class SAPAcctngDocument
                         End If
                     Else
                         oAccountGl.SetValue("COSTCENTER", lSAPFormat.unpack(lRow.KOSTL, 10))
-                        '                        oAccountGl.SetValue("MATERIAL", lSAPFormat.unpack(lRow.MATNR, 18))
+                        ' oAccountGl.SetValue("MATERIAL", lSAPFormat.unpack(lRow.MATNR, 18))
                         oAccountGl.SetValue("MATERIAL", lRow.MATNR)
                         oAccountGl.SetValue("PLANT", lRow.WERKS)
                         oAccountGl.SetValue("VENDOR_NO", lSAPFormat.unpack(lRow.LIFNR, 10))
@@ -342,7 +356,7 @@ Public Class SAPAcctngDocument
                     ' Business Place
                     If lRow.BUPLA <> "" Then
                         oExtension2.Append()
-                        oExtension2.SetValue("STRUCTURE", "ZFI_BAPIEXT_ST")
+                        oExtension2.SetValue("STRUCTURE", "ZFI_BAPIEXT_BUPLA")
                         oExtension2.SetValue("VALUEPART1", lSAPFormat.unpack(CStr(lCnt), 10))
                         oExtension2.SetValue("VALUEPART2", lSAPFormat.unpack(lRow.BUPLA, 4))
                     End If
@@ -397,7 +411,7 @@ Public Class SAPAcctngDocument
                     ' Business Place
                     If lRow.BUPLA <> "" Then
                         oExtension2.Append()
-                        oExtension2.SetValue("STRUCTURE", "ZFI_BAPIEXT_ST")
+                        oExtension2.SetValue("STRUCTURE", "ZFI_BAPIEXT_BUPLA")
                         oExtension2.SetValue("VALUEPART1", lSAPFormat.unpack(CStr(lCnt), 10))
                         oExtension2.SetValue("VALUEPART2", lSAPFormat.unpack(lRow.BUPLA, 4))
                     End If

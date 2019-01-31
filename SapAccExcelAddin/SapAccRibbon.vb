@@ -111,6 +111,8 @@ Public Class SapAccRibbon
         Dim aKOSTL As String
         Dim aAUFNR As String
 
+        Dim aFKBERNAME As String
+
         Dim aDws As Excel.Worksheet
         Dim aPws As Excel.Worksheet
         Dim aWB As Excel.Workbook
@@ -142,6 +144,11 @@ Public Class SapAccRibbon
         aWAERS3 = aPws.Cells(14, 2).Value
         aCURRTYP4 = aPws.Cells(15, 2).Value
         aWAERS4 = aPws.Cells(16, 2).Value
+
+        aFKBERNAME = aPws.Cells(18, 2).Value
+        If CStr(aFKBERNAME) = "" Then
+            aFKBERNAME = "FKBER"
+        End If
         ' Check Authority
         '  Dim aSAPZFI_CHECK_F_BKPF_BUK As New SAPZFI_CHECK_F_BKPF_BUK
         '  Dim aAuth As Integer
@@ -184,10 +191,6 @@ Public Class SapAccRibbon
                                             aDws.Cells(i, 20).Value, aDws.Cells(i, 25).Value, aDws.Cells(i, 26).Value, aDws.Cells(i, 27).Value, aDws.Cells(i, 18).Value,
                                             aDws.Cells(i, 44).Value, aDws.Cells(i, 33).Value, aDws.Cells(i, 34).Value,
                                             aDws.Cells(i, 37).Value, aDws.Cells(i, 28).Value, aDws.Cells(i, 29).Value, aDws.Cells(i, 30).Value)
-            If aSAPDocItem.BUPLA <> "" And (aSAPDocItem.ZZDIM06 <> "" Or aSAPDocItem.ZZDIM07 <> "") Then
-                MsgBox("Business place can not be used together with OEM or Region in the Customer specific fields in line " & i, vbCritical + vbOKOnly)
-                Exit Sub
-            End If
             aData.Add(aSAPDocItem)
             If (aDws.Cells(i, CP).Value = "X" Or aDws.Cells(i, CP).Value = "x") Then
                 If InStr(1, aDws.Cells(i, CM).Value, "BKPFF") = 0 Then
@@ -237,7 +240,7 @@ Public Class SapAccRibbon
                         aACC_PRINCIPLE = adACC_PRINCIPLE
                     End If
                     If InStr(1, CStr(aDws.Cells(i, CM).Value), "BKPFF") = 0 Then
-                        aRetStr = aSAPAcctngDocument.post(aBLDAT, aBLART, aBUKRS, aBUDAT, aWAERS, aXBLNR, aBKTXT, aFIS_PERIOD, aACC_PRINCIPLE, aData, pTest)
+                        aRetStr = aSAPAcctngDocument.post(aBLDAT, aBLART, aBUKRS, aBUDAT, aWAERS, aXBLNR, aBKTXT, aFIS_PERIOD, aACC_PRINCIPLE, aData, pTest, aFKBERNAME)
                         aDws.Cells(i, CM) = CStr(aRetStr)
                         aDws.Cells(i, CM + 1) = CStr(ExtractDocNumberFromMessage(aRetStr))
                     End If
