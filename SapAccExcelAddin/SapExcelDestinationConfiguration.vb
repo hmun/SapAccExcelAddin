@@ -7,6 +7,7 @@ Imports SAP.Middleware.Connector
 Public Class SapExcelDestinationConfiguration
 
     Private Shared inMemoryDestinationConfiguration As New SapInMemoryDestinationConfiguration()
+    Private Shared destinationName As String
 
     Public Shared Sub SetUp()
         '' register the in-memory destination configuration -- called before executing any of the examples
@@ -16,6 +17,7 @@ Public Class SapExcelDestinationConfiguration
     Public Shared Sub TearDown()
         '' unregister the in-memory destination configuration -- called after we are done working with the examples 
         RfcDestinationManager.UnregisterDestinationConfiguration(inMemoryDestinationConfiguration)
+        inMemoryDestinationConfiguration.RemoveDestination(destinationName)
     End Sub
 
     Public Shared Sub ExcelAddOrChangeDestination(pWSname As String)
@@ -51,7 +53,11 @@ Public Class SapExcelDestinationConfiguration
         If aPws.Cells(10, 2).value <> "" Then
             parameters(RfcConfigParameters.Language) = aPws.Cells(10, 2).value
         End If
+        parameters(RfcConfigParameters.SncMode) = aPws.Cells(15, 2).value
+        '        parameters(RfcConfigParameters.SncMyName) = aPws.Cells(16, 2).value
+        parameters(RfcConfigParameters.SncPartnerName) = aPws.Cells(17, 2).value
         inMemoryDestinationConfiguration.AddOrEditDestination(parameters)
+        destinationName = parameters(RfcConfigParameters.Name)
     End Sub
 
 End Class

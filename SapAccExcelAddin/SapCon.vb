@@ -9,6 +9,7 @@ Public Class SapCon
     Private aSapExcelDestinationConfiguration As SapExcelDestinationConfiguration
     Private aDest As String
     Private destination As RfcCustomDestination
+    Private connected As Boolean = False
 
     Public Sub New()
         Dim parameters As New RfcConfigParameters()
@@ -29,7 +30,8 @@ Public Class SapCon
     End Sub
 
     Public Function checkCon() As Integer
-        Dim dest As RfcDestination
+        Dim dest As RfcDestination = Nothing
+        Dim formRet = 0
         If destination Is Nothing Then
             Try
                 dest = RfcDestinationManager.GetDestination(aDest)
@@ -41,7 +43,31 @@ Public Class SapCon
                 Exit Function
             End Try
         End If
-        If destination.User = "" Then
+        If Not connected And destination.SncMode = 1 Then
+            Dim oForm As New FormLogon
+            Dim aClient As String
+            Dim aUserName As String
+            Dim aPassword As String
+            Dim aLanguage As String
+            oForm.Destination.Text = dest.Name
+            If Not destination.Client Is Nothing Then
+                oForm.Client.Text = destination.Client
+            End If
+            If Not destination.Language Is Nothing Then
+                oForm.Language.Text = destination.Language
+            End If
+            oForm.UserName.Text = destination.SncMyName
+            oForm.UserName.Enabled = False
+            oForm.Password.Enabled = False
+            formRet = oForm.ShowDialog()
+            If formRet = System.Windows.Forms.DialogResult.OK Then
+                aClient = oForm.Client.Text
+                aUserName = oForm.UserName.Text
+                aPassword = oForm.Password.Text
+                aLanguage = oForm.Language.Text
+                setCredentials_SNC(aClient, aLanguage)
+            End If
+        ElseIf Not connected Then
             Dim oForm As New FormLogon
             Dim aClient As String
             Dim aUserName As String
@@ -54,8 +80,11 @@ Public Class SapCon
             If Not destination.Language Is Nothing Then
                 oForm.Language.Text = destination.Language
             End If
-            aRet = oForm.ShowDialog()
-            If aRet = System.Windows.Forms.DialogResult.OK Then
+            oForm.Destination.Text = dest.Name
+            oForm.UserName.Enabled = True
+            oForm.Password.Enabled = True
+            formRet = oForm.ShowDialog()
+            If formRet = System.Windows.Forms.DialogResult.OK Then
                 aClient = oForm.Client.Text
                 aUserName = oForm.UserName.Text
                 aPassword = oForm.Password.Text
@@ -63,19 +92,37 @@ Public Class SapCon
                 setCredentials(aClient, aUserName, aPassword, aLanguage)
             End If
         End If
-        Try
-            destination.Ping()
-            checkCon = 0
-        Catch ex As RfcInvalidParameterException
-            clearCredentials()
-            MsgBox("Connecting to SAP failed! " & ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SapCon")
-            checkCon = 4
-        Catch ex As RfcBaseException
-            clearCredentials()
-            MsgBox("Connecting to SAP failed! " & ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SapCon")
+        If connected Or formRet = System.Windows.Forms.DialogResult.OK Then
+            Try
+                destination.Ping()
+                connected = True
+                checkCon = 0
+            Catch ex As RfcInvalidParameterException
+                clearCredentials()
+                MsgBox("Connecting to SAP failed! " & ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SapCon")
+                connected = False
+                checkCon = 4
+            Catch ex As RfcBaseException
+                clearCredentials()
+                MsgBox("Connecting to SAP failed! " & ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SapCon")
+                connected = False
+                checkCon = 8
+            End Try
+        Else
+            connected = False
+            destination = Nothing
             checkCon = 8
-        End Try
+        End If
     End Function
+
+    Public Sub setCredentials_SNC(aClient As String, aLanguage As String)
+        Try
+            destination.Client = aClient
+            destination.Language = aLanguage
+        Catch ex As System.Exception
+            MsgBox("setCredentials failed! " & ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SapCon")
+        End Try
+    End Sub
 
     Public Sub setCredentials(aClient As String, aUsername As String, aPassword As String, aLanguage As String)
         Try
@@ -91,6 +138,7 @@ Public Class SapCon
     Public Sub SAPlogoff()
         destination = Nothing
         aSapExcelDestinationConfiguration.TearDown()
+        connected = False
     End Sub
 
     Public Sub clearCredentials()
