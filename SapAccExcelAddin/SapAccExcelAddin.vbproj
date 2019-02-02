@@ -35,7 +35,7 @@
     <PublishUrl>D:\VS_WS\SapAccExcelAddIn_publish_64\</PublishUrl>
     <InstallUrl />
     <TargetCulture>en</TargetCulture>
-    <ApplicationVersion>1.0.2.1</ApplicationVersion>
+    <ApplicationVersion>1.0.3.0</ApplicationVersion>
     <AutoIncrementApplicationRevision>true</AutoIncrementApplicationRevision>
     <UpdateEnabled>true</UpdateEnabled>
     <UpdateInterval>7</UpdateInterval>
@@ -206,6 +206,14 @@
   -->
   <ItemGroup>
     <AppDesigner Include="My Project\" />
+    <Compile Include="ConParameters.vb" />
+    <Compile Include="FormDestinations.Designer.vb">
+      <DependentUpon>FormDestinations.vb</DependentUpon>
+    </Compile>
+    <Compile Include="FormDestinations.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="TField.vb" />
     <Compile Include="DateFormatString.vb" />
     <Compile Include="FormLogon.Designer.vb">
       <DependentUpon>FormLogon.vb</DependentUpon>
@@ -233,10 +241,15 @@
     </Compile>
     <Compile Include="SAPWbsElement.vb" />
     <Compile Include="SAPZFI_CHECK_F_BKPF_BUK.vb" />
+    <EmbeddedResource Include="FormDestinations.resx">
+      <DependentUpon>FormDestinations.vb</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="SapAccRibbon.resx">
       <DependentUpon>SapAccRibbon.vb</DependentUpon>
     </EmbeddedResource>
-    <None Include="app.config" />
+    <None Include="app.config">
+      <SubType>Designer</SubType>
+    </None>
     <None Include="Hermann_Mundprecht.pfx" />
     <None Include="SapAccAddIn.Designer.xml">
       <DependentUpon>SapAccAddIn.vb</DependentUpon>
@@ -287,10 +300,11 @@
     <SignManifests>true</SignManifests>
   </PropertyGroup>
   <PropertyGroup>
-    <ManifestCertificateThumbprint>2E40E199F78DFDE9A12D51E57C8DBC092D4A45DB</ManifestCertificateThumbprint>
+    <ManifestCertificateThumbprint>0A36EF37D8F9851B6897205D8780AE0F66A018ED</ManifestCertificateThumbprint>
   </PropertyGroup>
   <PropertyGroup>
-    <ManifestKeyFile>SapAccExcelAddin_TemporaryKey.pfx</ManifestKeyFile>
+    <ManifestKeyFile>
+    </ManifestKeyFile>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
     <DebugSymbols>true</DebugSymbols>

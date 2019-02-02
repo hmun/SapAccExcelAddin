@@ -55,10 +55,9 @@
         '
         'SapAcc
         '
-        Me.SapAcc.ControlId.ControlIdType = Microsoft.Office.Tools.Ribbon.RibbonControlIdType.Office
         Me.SapAcc.Groups.Add(Me.Accounting)
         Me.SapAcc.Groups.Add(Me.Logon)
-        Me.SapAcc.Label = "SAP Document"
+        Me.SapAcc.Label = "SAP FI"
         Me.SapAcc.Name = "SapAcc"
         '
         'Accounting

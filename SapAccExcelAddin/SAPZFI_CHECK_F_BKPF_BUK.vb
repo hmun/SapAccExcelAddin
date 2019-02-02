@@ -9,19 +9,28 @@ Public Class SAPZFI_CHECK_F_BKPF_BUK
     Sub New(aSapCon As SapCon)
         sapcon = aSapCon
         destination = aSapCon.getDestination()
-        oRfcFunction = destination.Repository.CreateFunction("ZFAGL_UPD_YMPNUM")
+        Try
+            oRfcFunction = destination.Repository.CreateFunction("ZFI_CHECK_F_BKPF_BUK")
+        Catch ex As Exception
+            oRfcFunction = Nothing
+        End Try
     End Sub
 
     Public Function checkAuthority(pBUKRS As String) As Integer
         sapcon.checkCon()
-        Try
-            oRfcFunction.SetValue("I_BUKRS", pBUKRS)
-            oRfcFunction.Invoke(destination)
-            checkAuthority = oRfcFunction.GetValue("E_RETURN")
-        Catch ex As Exception
-            MsgBox("Exception in checkAuthority! " & ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SAPZFI_CHECK_F_BKPF_BUK")
-            checkAuthority = 8
-        End Try
+        If oRfcFunction Is Nothing Then
+            ' for systems that do not contain ZFI_CHECK_F_BKPF_BUK we can not check the authorization
+            checkAuthority = 2
+        Else
+            Try
+                oRfcFunction.SetValue("I_BUKRS", pBUKRS)
+                oRfcFunction.Invoke(destination)
+                checkAuthority = oRfcFunction.GetValue("E_SUBRC")
+            Catch ex As Exception
+                MsgBox("Exception in checkAuthority! " & ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SAPZFI_CHECK_F_BKPF_BUK")
+                checkAuthority = 8
+            End Try
+        End If
         Exit Function
     End Function
 

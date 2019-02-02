@@ -4,9 +4,9 @@ Imports SAP.Middleware.Connector
 Public Class SapAccRibbon
     Private aSapCon
     Private aSapGeneral
-    Const CP = 45 'column of post indicator
-    Const CD = 46 'column of first header value
-    Const CM = 55 'column of return message
+    Const CP = 48 'column of post indicator
+    Const CD = 49 'column of first header value
+    Const CM = 58 'column of return message
 
     Private Sub ButtonCheckAccDoc_Click(sender As Object, e As RibbonControlEventArgs) Handles ButtonCheckAccDoc.Click
         Dim aSapConRet As Integer
@@ -20,6 +20,8 @@ Public Class SapAccRibbon
         aSapConRet = aSapCon.checkCon()
         If aSapConRet = 0 Then
             SAP_AccDoc_execute(pTest:=True)
+        Else
+            aSapCon = Nothing
         End If
     End Sub
     Private Sub ButtonPostAccDoc_Click(sender As Object, e As RibbonControlEventArgs) Handles ButtonPostAccDoc.Click
@@ -34,6 +36,8 @@ Public Class SapAccRibbon
         aSapConRet = aSapCon.checkCon()
         If aSapConRet = 0 Then
             SAP_AccDoc_execute(pTest:=False)
+        Else
+            aSapCon = Nothing
         End If
     End Sub
 
@@ -56,6 +60,8 @@ Public Class SapAccRibbon
         aConRet = aSapCon.checkCon()
         If aConRet = 0 Then
             MsgBox("SAP-Logon successful! ", MsgBoxStyle.OkOnly Or MsgBoxStyle.Information, "Sap Accounting")
+        Else
+            aSapCon = Nothing
         End If
     End Sub
 
@@ -150,13 +156,8 @@ Public Class SapAccRibbon
             aFKBERNAME = "FKBER"
         End If
         ' Check Authority
-        '  Dim aSAPZFI_CHECK_F_BKPF_BUK As New SAPZFI_CHECK_F_BKPF_BUK
-        '  Dim aAuth As Integer
-        '  aAuth = aSAPZFI_CHECK_F_BKPF_BUK.checkAuthority(adBUKRS)
-        '  If aAuth = False Then
-        '    MsgBox "User " & MySAPCon.SAPCon.User & " is not authorized in Company Code " & adBUKRS, vbCritical + vbOKOnly
-        '    Exit Sub
-        '  End If
+        Dim aSAPZFI_CHECK_F_BKPF_BUK As New SAPZFI_CHECK_F_BKPF_BUK(aSapCon)
+        Dim aAuth As Integer
         ' Read the Data
         Try
             aDws = aWB.Worksheets("SAP-Acc-Data")
@@ -168,29 +169,30 @@ Public Class SapAccRibbon
         aDws.Activate()
         i = 2
         Do
-            aKONTO = aDws.Cells(i, 2).Value
-            aMATNR = aDws.Cells(i, 3).Value
-            aWERKS = aDws.Cells(i, 4).Value
-            aLIFNR = aDws.Cells(i, 5).Value
-            aKOSTL = aDws.Cells(i, 7).Value
-            aAUFNR = aDws.Cells(i, 8).Value
-            aSGTXT = aDws.Cells(i, 35).Value
-            aMWSKZ = aDws.Cells(i, 36).Value
-            aBETRA = CDbl(aDws.Cells(i, 39).Value)
+            aKONTO = CStr(aDws.Cells(i, 2).Value)
+            aMATNR = CStr(aDws.Cells(i, 3).Value)
+            aWERKS = CStr(aDws.Cells(i, 4).Value)
+            aLIFNR = CStr(aDws.Cells(i, 5).Value)
+            aKOSTL = CStr(aDws.Cells(i, 7).Value)
+            aAUFNR = CStr(aDws.Cells(i, 8).Value)
+            aSGTXT = CStr(aDws.Cells(i, 38).Value)
+            aMWSKZ = CStr(aDws.Cells(i, 39).Value)
+            aBETRA = CDbl(aDws.Cells(i, 42).Value)
 
-            aSAPDocItem = aSAPDocItem.create(aDws.Cells(i, 1).Value, aKONTO, aBETRA, aMWSKZ, aSGTXT, aAUFNR, aMATNR, aWERKS, aKOSTL, aLIFNR,
-                                            aDws.Cells(i, 12).Value, aDws.Cells(i, 13).Value, aDws.Cells(i, 14).Value, aDws.Cells(i, 15).Value,
-                                            aDws.Cells(i, 16).Value, aDws.Cells(i, 17).Value, aDws.Cells(i, 19).Value,
-                                            aDws.Cells(i, 28).Value, aDws.Cells(i, 32).Value, aDws.Cells(i, 38).Value,
-                                            CDbl(aDws.Cells(i, 40).Value), aCURRTYP2, aWAERS2,
-                                            CDbl(aDws.Cells(i, 41).Value), aCURRTYP3, aWAERS3,
-                                            CDbl(aDws.Cells(i, 42).Value), aCURRTYP4, aWAERS4,
-                                            aDws.Cells(i, 9).Value, aDws.Cells(i, 21).Value, aDws.Cells(i, 6).Value,
-                                            aDws.Cells(i, 23).Value, aDws.Cells(i, 24).Value, aDws.Cells(i, 43).Value,
-                                            aDws.Cells(i, 10).Value, aDws.Cells(i, 11).Value, aDws.Cells(i, CD + 4).Value, aDws.Cells(i, 22).Value,
-                                            aDws.Cells(i, 20).Value, aDws.Cells(i, 25).Value, aDws.Cells(i, 26).Value, aDws.Cells(i, 27).Value, aDws.Cells(i, 18).Value,
-                                            aDws.Cells(i, 44).Value, aDws.Cells(i, 33).Value, aDws.Cells(i, 34).Value,
-                                            aDws.Cells(i, 37).Value, aDws.Cells(i, 28).Value, aDws.Cells(i, 29).Value, aDws.Cells(i, 30).Value)
+            aSAPDocItem = aSAPDocItem.create(CStr(aDws.Cells(i, 1).Value), aKONTO, aBETRA, aMWSKZ, aSGTXT, aAUFNR, aMATNR, aWERKS, aKOSTL, aLIFNR,
+                                            CStr(aDws.Cells(i, 14).Value), CStr(aDws.Cells(i, 15).Value), CStr(aDws.Cells(i, 16).Value), CStr(aDws.Cells(i, 17).Value),
+                                            CStr(aDws.Cells(i, 18).Value), CStr(aDws.Cells(i, 19).Value), CStr(aDws.Cells(i, 21).Value),
+                                            CStr(aDws.Cells(i, 30).Value), CStr(aDws.Cells(i, 34).Value), CStr(aDws.Cells(i, 41).Value),
+                                            CDbl(aDws.Cells(i, 43).Value), aCURRTYP2, aWAERS2,
+                                            CDbl(aDws.Cells(i, 44).Value), aCURRTYP3, aWAERS3,
+                                            CDbl(aDws.Cells(i, 45).Value), aCURRTYP4, aWAERS4,
+                                            CStr(aDws.Cells(i, 9).Value), CStr(aDws.Cells(i, 23).Value), CStr(aDws.Cells(i, 6).Value),
+                                            CStr(aDws.Cells(i, 25).Value), CStr(aDws.Cells(i, 26).Value), CStr(aDws.Cells(i, 46).Value),
+                                            CStr(aDws.Cells(i, 10).Value), CStr(aDws.Cells(i, 11).Value), CStr(aDws.Cells(i, CD + 4).Value), CStr(aDws.Cells(i, 24).Value),
+                                            CStr(aDws.Cells(i, 22).Value), CStr(aDws.Cells(i, 27).Value), CStr(aDws.Cells(i, 28).Value), CStr(aDws.Cells(i, 29).Value), CStr(aDws.Cells(i, 20).Value),
+                                            CStr(aDws.Cells(i, 47).Value), CStr(aDws.Cells(i, 35).Value), CStr(aDws.Cells(i, 36).Value),
+                                            CStr(aDws.Cells(i, 40).Value), CStr(aDws.Cells(i, 30).Value), CStr(aDws.Cells(i, 31).Value), CStr(aDws.Cells(i, 32).Value),
+                                            CStr(aDws.Cells(i, 12).Value), CStr(aDws.Cells(i, 13).Value), CStr(aDws.Cells(i, 37).Value))
             aData.Add(aSAPDocItem)
             If (aDws.Cells(i, CP).Value = "X" Or aDws.Cells(i, CP).Value = "x") Then
                 If InStr(1, aDws.Cells(i, CM).Value, "BKPFF") = 0 Then
@@ -240,9 +242,14 @@ Public Class SapAccRibbon
                         aACC_PRINCIPLE = adACC_PRINCIPLE
                     End If
                     If InStr(1, CStr(aDws.Cells(i, CM).Value), "BKPFF") = 0 Then
-                        aRetStr = aSAPAcctngDocument.post(aBLDAT, aBLART, aBUKRS, aBUDAT, aWAERS, aXBLNR, aBKTXT, aFIS_PERIOD, aACC_PRINCIPLE, aData, pTest, aFKBERNAME)
-                        aDws.Cells(i, CM) = CStr(aRetStr)
-                        aDws.Cells(i, CM + 1) = CStr(ExtractDocNumberFromMessage(aRetStr))
+                        aAuth = aSAPZFI_CHECK_F_BKPF_BUK.checkAuthority(adBUKRS)
+                        If aAuth <> 2 Then
+                            aDws.Cells(i, CM) = "User not authorized for company code " & aBUKRS
+                        Else
+                            aRetStr = aSAPAcctngDocument.post(aBLDAT, aBLART, aBUKRS, aBUDAT, aWAERS, aXBLNR, aBKTXT, aFIS_PERIOD, aACC_PRINCIPLE, aData, pTest, aFKBERNAME)
+                            aDws.Cells(i, CM) = CStr(aRetStr)
+                            aDws.Cells(i, CM + 1) = CStr(ExtractDocNumberFromMessage(aRetStr))
+                        End If
                     End If
                 End If
                 aDws.Cells(i, CM + 1) = CStr(ExtractDocNumberFromMessage(aDws.Cells(i, CM).Value))

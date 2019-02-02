@@ -21,17 +21,17 @@ Public Class SapGeneral
             checkVersion = False
             Exit Function
         End Try
-        aFromVersion = aCws.Cells(13, 2).Value
-        aToVersion = aCws.Cells(14, 2).Value
+        aFromVersion = aCws.Cells(15, 2).Value
+        aToVersion = aCws.Cells(16, 2).Value
 
         Try
             assembly = System.Reflection.Assembly.GetExecutingAssembly()
             fileVersionInfo = System.Diagnostics.FileVersionInfo.GetVersionInfo(assembly.Location)
             aVersion = fileVersionInfo.ProductVersion
         Catch Exc As System.Exception
-            aVersion = "1.0.2.0"
+            aVersion = "1.0.3.0"
         End Try
-        aVersion = "1.0.2.0"
+        aVersion = "1.0.3.0"
         If aVersion > aToVersion Or aVersion < aFromVersion Then
             ' try Publish Version
             MsgBox("The Version of the Excel-Template is not valid for this Add-In. Please use a Template that is valid for version " & aVersion,

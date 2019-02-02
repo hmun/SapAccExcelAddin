@@ -51,6 +51,9 @@
     Public ZZDIM06 As String
     Public ZZDIM07 As String
     Public BUPLA As String
+    Public SALES_ORD As String
+    Public S_ORD_ITEM As String
+    Public PARTNER_BK As String
 
     Public Function create(pACCTYPE As String, pNEWKO As String, pBetrag As Double, pMWSKZ As String, pSGTXT As String,
                        pAUFNR As String, pMATNR As String, pWERKS As String, pKOSTL As String,
@@ -66,7 +69,8 @@
                        pNETWORK As String, pACTIVITY As String, pCOMP_CODE As String, pPARTNER_SEGMENT As String,
                        pPART_PRCTR As String, pZZETXT As String, pZZHFMC1 As String, pZZHFMC3 As String, pMTART As String,
                        pREF_KEY_3 As String, pPMNT_BLOCK As String, pSP_GL_IND As String,
-                       pTXJCD As String, pZZDIM06 As String, pZZDIM07 As String, pBUPLA As String) As SAPDocItem
+                       pTXJCD As String, pZZDIM06 As String, pZZDIM07 As String, pBUPLA As String,
+                       pSALES_ORD As String, pS_ORD_ITEM As String, pPARTNER_BK As String) As SAPDocItem
         Dim aSAPDocItem As New SAPDocItem
         aSAPDocItem.ACCTYPE = pACCTYPE
         aSAPDocItem.NEWKO = pNEWKO
@@ -120,6 +124,9 @@
         aSAPDocItem.ZZDIM06 = pZZDIM06
         aSAPDocItem.ZZDIM07 = pZZDIM07
         aSAPDocItem.BUPLA = pBUPLA
+        aSAPDocItem.SALES_ORD = pSALES_ORD
+        aSAPDocItem.S_ORD_ITEM = pS_ORD_ITEM
+        aSAPDocItem.PARTNER_BK = pPARTNER_BK
 
         create = aSAPDocItem
     End Function

@@ -8,7 +8,7 @@ Public Class SapCon
     Const aConnectionWs As String = "SAP-Con"
     Private aSapExcelDestinationConfiguration As SapExcelDestinationConfiguration
     Private aDest As String
-    Private destination As RfcCustomDestination
+    Public destination As RfcCustomDestination
     Private connected As Boolean = False
 
     Public Sub New()
@@ -25,13 +25,35 @@ Public Class SapCon
         End Try
         aDest = aCws.Cells(2, 2).Value
         aSapExcelDestinationConfiguration = New SapExcelDestinationConfiguration
+        aSapExcelDestinationConfiguration.ConfigAddOrChangeDestination()
         aSapExcelDestinationConfiguration.ExcelAddOrChangeDestination(aConnectionWs)
         aSapExcelDestinationConfiguration.SetUp()
+        setDest()
     End Sub
+
+    Private Function setDest()
+        Dim formRet = 0
+        Dim oForm As New FormDestinations
+        Dim destCol As Collection
+        Dim dest As String
+        destCol = aSapExcelDestinationConfiguration.getDestinationList()
+        For Each dest In destCol
+            oForm.ListBoxDest.Items.Add(dest)
+        Next
+        formRet = oForm.ShowDialog()
+        If formRet = System.Windows.Forms.DialogResult.OK Then
+            aDest = oForm.ListBoxDest.SelectedItem.ToString
+        Else
+            aDest = ""
+        End If
+    End Function
 
     Public Function checkCon() As Integer
         Dim dest As RfcDestination = Nothing
         Dim formRet = 0
+        If aDest = "" Then
+            setDest()
+        End If
         If destination Is Nothing Then
             Try
                 dest = RfcDestinationManager.GetDestination(aDest)
@@ -53,7 +75,9 @@ Public Class SapCon
             If Not destination.Client Is Nothing Then
                 oForm.Client.Text = destination.Client
             End If
-            If Not destination.Language Is Nothing Then
+            If My.Settings.SAP_Language IsNot Nothing And My.Settings.SAP_Language <> "" Then
+                oForm.Language.Text = My.Settings.SAP_Language
+            ElseIf Not destination.Language Is Nothing Then
                 oForm.Language.Text = destination.Language
             End If
             oForm.UserName.Text = destination.SncMyName
@@ -65,6 +89,7 @@ Public Class SapCon
                 aUserName = oForm.UserName.Text
                 aPassword = oForm.Password.Text
                 aLanguage = oForm.Language.Text
+                My.Settings.SAP_Language = oForm.Language.Text
                 setCredentials_SNC(aClient, aLanguage)
             End If
         ElseIf Not connected Then
@@ -77,18 +102,25 @@ Public Class SapCon
             If Not destination.Client Is Nothing Then
                 oForm.Client.Text = destination.Client
             End If
-            If Not destination.Language Is Nothing Then
+            If My.Settings.SAP_Language IsNot Nothing And My.Settings.SAP_Language <> "" Then
+                oForm.Language.Text = My.Settings.SAP_Language
+            ElseIf Not destination.Language Is Nothing Then
                 oForm.Language.Text = destination.Language
             End If
             oForm.Destination.Text = dest.Name
             oForm.UserName.Enabled = True
+            If My.Settings.SAP_User IsNot Nothing Then
+                oForm.UserName.Text = CStr(My.Settings.SAP_User)
+            End If
             oForm.Password.Enabled = True
             formRet = oForm.ShowDialog()
             If formRet = System.Windows.Forms.DialogResult.OK Then
                 aClient = oForm.Client.Text
                 aUserName = oForm.UserName.Text
+                My.Settings.SAP_User = oForm.UserName.Text
                 aPassword = oForm.Password.Text
                 aLanguage = oForm.Language.Text
+                My.Settings.SAP_Language = oForm.Language.Text
                 setCredentials(aClient, aUserName, aPassword, aLanguage)
             End If
         End If
@@ -137,7 +169,11 @@ Public Class SapCon
 
     Public Sub SAPlogoff()
         destination = Nothing
-        aSapExcelDestinationConfiguration.TearDown()
+        If aDest IsNot Nothing And aDest <> "" Then
+            aSapExcelDestinationConfiguration.TearDown(aDest)
+        Else
+            aSapExcelDestinationConfiguration.TearDown()
+        End If
         connected = False
     End Sub
 

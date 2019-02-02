@@ -61,6 +61,7 @@ Public Class SAPAcctngDocument
             oDocumentHeader.SetValue("HEADER_TXT", pBKTXT)
             Dim lRow As Object
             Dim lCnt As Integer
+            Dim lCntSav As Integer
             lCnt = 0
             For Each lRow In pData
                 lCnt = lCnt + 1
@@ -271,17 +272,20 @@ Public Class SAPAcctngDocument
                         oAccountGl.SetValue("WBS_ELEMENT", lRow.WBS)
                         oAccountGl.SetValue("NETWORK", lSAPFormat.unpack(lRow.NETWORK, 12))
                         oAccountGl.SetValue("ACTIVITY", lSAPFormat.unpack(lRow.ACTIVITY, 4))
+                        oAccountGl.SetValue("SALES_ORD", lSAPFormat.unpack(lRow.SALES_ORD, 10))
+                        oAccountGl.SetValue("S_ORD_ITEM", lSAPFormat.unpack(lRow.S_ORD_ITEM, 6))
                     End If
                     oCurrencyAmount.Append()
                     oCurrencyAmount.SetValue("ITEMNO_ACC", lCnt)
                     oCurrencyAmount.SetValue("CURRENCY", pWAERS)
                     oCurrencyAmount.SetValue("AMT_DOCCUR", Format$(lRow.Betrag, "0.00"))
+                    lCntSav = lCnt
+                    Dim aSAPCalcTaxesFromGross As New SAPCalcTaxesFromGross(sapcon)
+                    Dim lTaxSum As Double
+                    Dim lTaxBase As Double
+                    Dim lTaxLines As Integer
+                    Dim oTAX_ITEM_OUT As IRfcTable
                     If lRow.MWSKZ <> "" Then
-                        Dim aSAPCalcTaxesFromGross As New SAPCalcTaxesFromGross(sapcon)
-                        Dim lTaxSum As Double
-                        Dim lTaxBase As Double
-                        Dim lTaxLines As Integer
-                        Dim oTAX_ITEM_OUT As IRfcTable
                         oTAX_ITEM_OUT = aSAPCalcTaxesFromGross.getTaxAmount(pBUKRS, lRow.MWSKZ, pWAERS, pBUDAT, lRow.Betrag, lRow.TXJCD)
                         lTaxLines = oTAX_ITEM_OUT.Count
                         ' calculate the taxsum
@@ -310,25 +314,97 @@ Public Class SAPAcctngDocument
                         End If
                     End If
                     If lRow.BETR2 <> 0 Then
+                        lCnt = lCntSav
                         oCurrencyAmount.Append()
                         oCurrencyAmount.SetValue("ITEMNO_ACC", lCnt)
                         oCurrencyAmount.SetValue("CURR_TYPE", lRow.CURRTYP2)
                         oCurrencyAmount.SetValue("CURRENCY", lRow.WAERS2)
                         oCurrencyAmount.SetValue("AMT_DOCCUR", Format$(lRow.BETR2, "0.00"))
+                        If lRow.MWSKZ <> "" Then
+                            oTAX_ITEM_OUT = aSAPCalcTaxesFromGross.getTaxAmount(pBUKRS, lRow.MWSKZ, lRow.WAERS2, pBUDAT, lRow.BETR2, lRow.TXJCD)
+                            lTaxLines = oTAX_ITEM_OUT.Count
+                            ' calculate the taxsum
+                            lTaxSum = 0
+                            For i As Integer = 0 To lTaxLines - 1
+                                lTaxSum = lTaxSum + oTAX_ITEM_OUT(i).GetDouble("FWSTE")
+                            Next i
+                            lTaxBase = lRow.BETR2 - lTaxSum
+                            ' change the ammount of the row to the net value
+                            oCurrencyAmount.SetValue("AMT_DOCCUR", Format$(lTaxBase, "0.00"))
+                            ' add the tax positions
+                            If lTaxSum <> 0 Or lTaxLines > 1 Then
+                                For i As Integer = 0 To lTaxLines - 1
+                                    lCnt = lCnt + 1
+                                    oCurrencyAmount.Append()
+                                    oCurrencyAmount.SetValue("ITEMNO_ACC", lCnt)
+                                    oCurrencyAmount.SetValue("CURRENCY", pWAERS)
+                                    oCurrencyAmount.SetValue("AMT_DOCCUR", Format$(oTAX_ITEM_OUT(i).GetDouble("FWSTE"), "0.00"))
+                                    oCurrencyAmount.SetValue("AMT_BASE", Format$(lTaxBase, "0.00"))
+                                Next i
+                            End If
+                        End If
                     End If
                     If lRow.BETR3 <> 0 Then
+                        lCnt = lCntSav
                         oCurrencyAmount.Append()
                         oCurrencyAmount.SetValue("ITEMNO_ACC", lCnt)
                         oCurrencyAmount.SetValue("CURR_TYPE", lRow.CURRTYP3)
                         oCurrencyAmount.SetValue("CURRENCY", lRow.WAERS3)
                         oCurrencyAmount.SetValue("AMT_DOCCUR", Format$(lRow.BETR3, "0.00"))
+                        If lRow.MWSKZ <> "" Then
+                            oTAX_ITEM_OUT = aSAPCalcTaxesFromGross.getTaxAmount(pBUKRS, lRow.MWSKZ, lRow.WAERS3, pBUDAT, lRow.BETR3, lRow.TXJCD)
+                            lTaxLines = oTAX_ITEM_OUT.Count
+                            ' calculate the taxsum
+                            lTaxSum = 0
+                            For i As Integer = 0 To lTaxLines - 1
+                                lTaxSum = lTaxSum + oTAX_ITEM_OUT(i).GetDouble("FWSTE")
+                            Next i
+                            lTaxBase = lRow.BETR2 - lTaxSum
+                            ' change the ammount of the row to the net value
+                            oCurrencyAmount.SetValue("AMT_DOCCUR", Format$(lTaxBase, "0.00"))
+                            ' add the tax positions
+                            If lTaxSum <> 0 Or lTaxLines > 1 Then
+                                For i As Integer = 0 To lTaxLines - 1
+                                    lCnt = lCnt + 1
+                                    oCurrencyAmount.Append()
+                                    oCurrencyAmount.SetValue("ITEMNO_ACC", lCnt)
+                                    oCurrencyAmount.SetValue("CURRENCY", pWAERS)
+                                    oCurrencyAmount.SetValue("AMT_DOCCUR", Format$(oTAX_ITEM_OUT(i).GetDouble("FWSTE"), "0.00"))
+                                    oCurrencyAmount.SetValue("AMT_BASE", Format$(lTaxBase, "0.00"))
+                                Next i
+                            End If
+                        End If
                     End If
                     If lRow.BETR4 <> 0 Then
+                        lCnt = lCntSav
                         oCurrencyAmount.Append()
                         oCurrencyAmount.SetValue("ITEMNO_ACC", lCnt)
                         oCurrencyAmount.SetValue("CURR_TYPE", lRow.CURRTYP4)
                         oCurrencyAmount.SetValue("CURRENCY", lRow.WAERS4)
                         oCurrencyAmount.SetValue("AMT_DOCCUR", Format$(lRow.BETR4, "0.00"))
+                        If lRow.MWSKZ <> "" Then
+                            oTAX_ITEM_OUT = aSAPCalcTaxesFromGross.getTaxAmount(pBUKRS, lRow.MWSKZ, lRow.WAERS4, pBUDAT, lRow.BETR4, lRow.TXJCD)
+                            lTaxLines = oTAX_ITEM_OUT.Count
+                            ' calculate the taxsum
+                            lTaxSum = 0
+                            For i As Integer = 0 To lTaxLines - 1
+                                lTaxSum = lTaxSum + oTAX_ITEM_OUT(i).GetDouble("FWSTE")
+                            Next i
+                            lTaxBase = lRow.BETR2 - lTaxSum
+                            ' change the ammount of the row to the net value
+                            oCurrencyAmount.SetValue("AMT_DOCCUR", Format$(lTaxBase, "0.00"))
+                            ' add the tax positions
+                            If lTaxSum <> 0 Or lTaxLines > 1 Then
+                                For i As Integer = 0 To lTaxLines - 1
+                                    lCnt = lCnt + 1
+                                    oCurrencyAmount.Append()
+                                    oCurrencyAmount.SetValue("ITEMNO_ACC", lCnt)
+                                    oCurrencyAmount.SetValue("CURRENCY", pWAERS)
+                                    oCurrencyAmount.SetValue("AMT_DOCCUR", Format$(oTAX_ITEM_OUT(i).GetDouble("FWSTE"), "0.00"))
+                                    oCurrencyAmount.SetValue("AMT_BASE", Format$(lTaxBase, "0.00"))
+                                Next i
+                            End If
+                        End If
                     End If
                 End If
                 If lRow.ACCTYPE = "D" Or lRow.ACCTYPE = "C" Then
@@ -341,6 +417,7 @@ Public Class SAPAcctngDocument
                     oAccountReceivable.SetValue("PMNT_BLOCK", lRow.PMNT_BLOCK)
                     oAccountReceivable.SetValue("ALLOC_NMBR", lRow.ALLOC_NMBR)
                     oAccountReceivable.SetValue("REF_KEY_3", lRow.REF_KEY_3)
+                    oAccountReceivable.SetValue("PARTNER_BK", lRow.PARTNER_BK)
                     If lRow.BLINE_DATE <> "" Then
                         oAccountReceivable.SetValue("BLINE_DATE", CDate(lRow.BLINE_DATE))
                     End If
@@ -396,6 +473,7 @@ Public Class SAPAcctngDocument
                     oAccountPayable.SetValue("PMNT_BLOCK", lRow.PMNT_BLOCK)
                     oAccountPayable.SetValue("ALLOC_NMBR", lRow.ALLOC_NMBR)
                     oAccountPayable.SetValue("REF_KEY_3", lRow.REF_KEY_3)
+                    oAccountPayable.SetValue("PARTNER_BK", lRow.PARTNER_BK)
                     If lRow.BLINE_DATE <> "" Then
                         oAccountPayable.SetValue("BLINE_DATE", CDate(lRow.BLINE_DATE))
                     End If
