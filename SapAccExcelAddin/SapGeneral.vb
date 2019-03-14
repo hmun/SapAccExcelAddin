@@ -6,6 +6,8 @@ Imports System.Reflection
 Imports System.Diagnostics
 
 Public Class SapGeneral
+    Const cVersion As String = "1.0.3.0"
+
     Public Function checkVersion() As Integer
         Dim aCws As Excel.Worksheet
         Dim aWB As Excel.Workbook
@@ -33,9 +35,9 @@ Public Class SapGeneral
             fileVersionInfo = System.Diagnostics.FileVersionInfo.GetVersionInfo(assembly.Location)
             aVersion = fileVersionInfo.ProductVersion
         Catch Exc As System.Exception
-            aVersion = "1.0.3.0"
+            aVersion = cVersion
         End Try
-        aVersion = "1.0.3.0"
+        aVersion = cVersion
         If aVersion > aToVersion Or aVersion < aFromVersion Then
             ' try Publish Version
             MsgBox("The Version of the Excel-Template is not valid for this Add-In. Please use a Template that is valid for version " & aVersion,
@@ -45,6 +47,33 @@ Public Class SapGeneral
         End If
 
         checkVersion = True
+    End Function
+
+    Public Function checkVersionInSAP(pSapCon As SapCon) As Integer
+        Dim aSAPZ_BC_EXCEL_ADDIN_VERS_CHK As New SAPZ_BC_EXCEL_ADDIN_VERS_CHK(pSapCon)
+        Dim assembly As Assembly
+        Dim assemblyNames As String()
+        Dim aAddIn As String
+        Dim aRet As Integer
+
+        checkVersionInSAP = True
+        aAddIn = ""
+        Try
+            assembly = System.Reflection.Assembly.GetExecutingAssembly()
+            assemblyNames = assembly.GetName().ToString.Split(New Char() {","c})
+            aAddIn = assemblyNames(0)
+        Catch Exc As System.Exception
+            MsgBox("Exception: " & Exc.Message,
+                   MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SapGeneral")
+            checkVersionInSAP = False
+            Exit Function
+        End Try
+        aRet = aSAPZ_BC_EXCEL_ADDIN_VERS_CHK.checkVersion(aAddIn, cVersion)
+        If aRet <> 0 Then
+            MsgBox("The Version " & cVersion & " of the Add-In " & aAddIn & " is not allowed in this SAP-System!",
+                   MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SapGeneral")
+            checkVersionInSAP = False
+        End If
     End Function
 
 End Class

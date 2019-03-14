@@ -32,10 +32,10 @@
     </StartupObject>
     <IsWebBootstrapper>False</IsWebBootstrapper>
     <BootstrapperEnabled>true</BootstrapperEnabled>
-    <PublishUrl>D:\VS_WS\SapAccExcelAddIn_publish_64\</PublishUrl>
+    <PublishUrl>T:\hmun\VbaGit_64\SapAccExcelAddin\x64\</PublishUrl>
     <InstallUrl />
     <TargetCulture>en</TargetCulture>
-    <ApplicationVersion>1.0.3.0</ApplicationVersion>
+    <ApplicationVersion>1.0.3.2</ApplicationVersion>
     <AutoIncrementApplicationRevision>true</AutoIncrementApplicationRevision>
     <UpdateEnabled>true</UpdateEnabled>
     <UpdateInterval>7</UpdateInterval>
@@ -142,10 +142,12 @@
   -->
   <ItemGroup>
     <Reference Include="Accessibility" />
-    <Reference Include="sapnco">
+    <Reference Include="sapnco, Version=3.0.0.42, Culture=neutral, PublicKeyToken=50436dca5c7f7d23, processorArchitecture=AMD64">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>C:\Program Files\SAP\SAP_DotNetConnector3_Net40_x64\sapnco.dll</HintPath>
     </Reference>
-    <Reference Include="sapnco_utils">
+    <Reference Include="sapnco_utils, Version=3.0.0.42, Culture=neutral, PublicKeyToken=50436dca5c7f7d23, processorArchitecture=AMD64">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>C:\Program Files\SAP\SAP_DotNetConnector3_Net40_x64\sapnco_utils.dll</HintPath>
     </Reference>
     <Reference Include="System" />
@@ -213,6 +215,7 @@
     <Compile Include="FormDestinations.vb">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="SAPZ_BC_EXCEL_ADDIN_VERS_CHK.vb" />
     <Compile Include="TField.vb" />
     <Compile Include="DateFormatString.vb" />
     <Compile Include="FormLogon.Designer.vb">

@@ -14,6 +14,7 @@ Public Class SapAccRibbon
 
     Private Sub ButtonCheckAccDoc_Click(sender As Object, e As RibbonControlEventArgs) Handles ButtonCheckAccDoc.Click
         Dim aSapConRet As Integer
+        Dim aSapVersionRet As Integer
         If Not aSapGeneral.checkVersion() Then
             Exit Sub
         End If
@@ -23,13 +24,17 @@ Public Class SapAccRibbon
         End If
         aSapConRet = aSapCon.checkCon()
         If aSapConRet = 0 Then
-            SAP_AccDoc_execute(pTest:=True)
+            aSapVersionRet = aSapGeneral.checkVersionInSAP(aSapCon)
+            If aSapVersionRet = True Then
+                SAP_AccDoc_execute(pTest:=True)
+            End If
         Else
-            aSapCon = Nothing
+                aSapCon = Nothing
         End If
     End Sub
     Private Sub ButtonPostAccDoc_Click(sender As Object, e As RibbonControlEventArgs) Handles ButtonPostAccDoc.Click
         Dim aSapConRet As Integer
+        Dim aSapVersionRet As Integer
         If Not aSapGeneral.checkVersion() Then
             Exit Sub
         End If
@@ -39,7 +44,10 @@ Public Class SapAccRibbon
         End If
         aSapConRet = aSapCon.checkCon()
         If aSapConRet = 0 Then
-            SAP_AccDoc_execute(pTest:=False)
+            aSapVersionRet = aSapGeneral.checkVersionInSAP(aSapCon)
+            If aSapVersionRet = True Then
+                SAP_AccDoc_execute(pTest:=False)
+            End If
         Else
             aSapCon = Nothing
         End If

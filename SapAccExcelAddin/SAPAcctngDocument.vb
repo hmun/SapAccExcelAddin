@@ -341,7 +341,8 @@ Public Class SAPAcctngDocument
                                     lCnt = lCnt + 1
                                     oCurrencyAmount.Append()
                                     oCurrencyAmount.SetValue("ITEMNO_ACC", lCnt)
-                                    oCurrencyAmount.SetValue("CURRENCY", pWAERS)
+                                    oCurrencyAmount.SetValue("CURR_TYPE", lRow.CURRTYP2)
+                                    oCurrencyAmount.SetValue("CURRENCY", lRow.WAERS2)
                                     oCurrencyAmount.SetValue("AMT_DOCCUR", Format$(oTAX_ITEM_OUT(i).GetDouble("FWSTE"), "0.00"))
                                     oCurrencyAmount.SetValue("AMT_BASE", Format$(lTaxBase, "0.00"))
                                 Next i
@@ -372,7 +373,8 @@ Public Class SAPAcctngDocument
                                     lCnt = lCnt + 1
                                     oCurrencyAmount.Append()
                                     oCurrencyAmount.SetValue("ITEMNO_ACC", lCnt)
-                                    oCurrencyAmount.SetValue("CURRENCY", pWAERS)
+                                    oCurrencyAmount.SetValue("CURR_TYPE", lRow.CURRTYP3)
+                                    oCurrencyAmount.SetValue("CURRENCY", lRow.WAERS3)
                                     oCurrencyAmount.SetValue("AMT_DOCCUR", Format$(oTAX_ITEM_OUT(i).GetDouble("FWSTE"), "0.00"))
                                     oCurrencyAmount.SetValue("AMT_BASE", Format$(lTaxBase, "0.00"))
                                 Next i
@@ -403,7 +405,8 @@ Public Class SAPAcctngDocument
                                     lCnt = lCnt + 1
                                     oCurrencyAmount.Append()
                                     oCurrencyAmount.SetValue("ITEMNO_ACC", lCnt)
-                                    oCurrencyAmount.SetValue("CURRENCY", pWAERS)
+                                    oCurrencyAmount.SetValue("CURR_TYPE", lRow.CURRTYP4)
+                                    oCurrencyAmount.SetValue("CURRENCY", lRow.WAERS4)
                                     oCurrencyAmount.SetValue("AMT_DOCCUR", Format$(oTAX_ITEM_OUT(i).GetDouble("FWSTE"), "0.00"))
                                     oCurrencyAmount.SetValue("AMT_BASE", Format$(lTaxBase, "0.00"))
                                 Next i
