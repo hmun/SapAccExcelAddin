@@ -41,6 +41,7 @@
     'Do not modify it using the code editor.
     <System.Diagnostics.DebuggerStepThrough()> _
     Private Sub InitializeComponent()
+        Dim resources As System.ComponentModel.ComponentResourceManager = New System.ComponentModel.ComponentResourceManager(GetType(SapAccRibbon))
         Me.SapAcc = Me.Factory.CreateRibbonTab
         Me.Accounting = Me.Factory.CreateRibbonGroup
         Me.ButtonCheckAccDoc = Me.Factory.CreateRibbonButton
@@ -69,13 +70,17 @@
         '
         'ButtonCheckAccDoc
         '
+        Me.ButtonCheckAccDoc.Image = CType(resources.GetObject("ButtonCheckAccDoc.Image"), System.Drawing.Image)
         Me.ButtonCheckAccDoc.Label = "Check Acc Document"
         Me.ButtonCheckAccDoc.Name = "ButtonCheckAccDoc"
+        Me.ButtonCheckAccDoc.ShowImage = True
         '
         'ButtonPostAccDoc
         '
+        Me.ButtonPostAccDoc.Image = CType(resources.GetObject("ButtonPostAccDoc.Image"), System.Drawing.Image)
         Me.ButtonPostAccDoc.Label = "Post Acc Document"
         Me.ButtonPostAccDoc.Name = "ButtonPostAccDoc"
+        Me.ButtonPostAccDoc.ShowImage = True
         '
         'Logon
         '
@@ -86,13 +91,17 @@
         '
         'ButtonLogon
         '
+        Me.ButtonLogon.Image = CType(resources.GetObject("ButtonLogon.Image"), System.Drawing.Image)
         Me.ButtonLogon.Label = "SAP Logon"
         Me.ButtonLogon.Name = "ButtonLogon"
+        Me.ButtonLogon.ShowImage = True
         '
         'ButtonLogoff
         '
+        Me.ButtonLogoff.Image = CType(resources.GetObject("ButtonLogoff.Image"), System.Drawing.Image)
         Me.ButtonLogoff.Label = "SAP Logoff"
         Me.ButtonLogoff.Name = "ButtonLogoff"
+        Me.ButtonLogoff.ShowImage = True
         '
         'SapAccRibbon
         '

@@ -179,6 +179,9 @@ Public Class SapAccRibbon
             Exit Sub
         End Try
         aDws.Activate()
+        Globals.SapAccAddIn.Application.Cursor = Microsoft.Office.Interop.Excel.XlMousePointer.xlWait
+        Globals.SapAccAddIn.Application.EnableEvents = False
+        Globals.SapAccAddIn.Application.ScreenUpdating = False
         i = 2
         Do
             aKONTO = CStr(aDws.Cells(i, 2).Value)
@@ -254,7 +257,7 @@ Public Class SapAccRibbon
                         aACC_PRINCIPLE = adACC_PRINCIPLE
                     End If
                     If InStr(1, CStr(aDws.Cells(i, CM).Value), "BKPFF") = 0 Then
-                        aAuth = aSAPZFI_CHECK_F_BKPF_BUK.checkAuthority(adBUKRS)
+                        aAuth = aSAPZFI_CHECK_F_BKPF_BUK.checkAuthority(aBUKRS)
                         If aAuth <> 2 Then
                             aDws.Cells(i, CM) = "User not authorized for company code " & aBUKRS
                         Else
@@ -269,6 +272,9 @@ Public Class SapAccRibbon
             End If
             i = i + 1
         Loop While CStr(aDws.Cells(i, 1).value) <> ""
+        Globals.SapAccAddIn.Application.EnableEvents = True
+        Globals.SapAccAddIn.Application.ScreenUpdating = True
+        Globals.SapAccAddIn.Application.Cursor = Microsoft.Office.Interop.Excel.XlMousePointer.xlDefault
     End Sub
 
     Private Function ExtractDocNumberFromMessage(Message As String) As String
