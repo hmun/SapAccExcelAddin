@@ -59,7 +59,11 @@ Public Class SAPAcctngDocument
             oDocumentHeader.SetValue("PSTNG_DATE", pBUDAT)
             oDocumentHeader.SetValue("FIS_PERIOD", pFIS_PERIOD) '23.01.2012 Buchungsperiode
             oDocumentHeader.SetValue("DOC_DATE", pBLDAT)
-            oDocumentHeader.SetValue("USERNAME", destination.SystemAttributes.User)
+            If destination.User Is Nothing Then
+                oDocumentHeader.SetValue("USERNAME", destination.SystemAttributes.User)
+            Else
+                oDocumentHeader.SetValue("USERNAME", destination.User)
+            End If
             oDocumentHeader.SetValue("DOC_TYPE", pBLART)
             oDocumentHeader.SetValue("REF_DOC_NO", pXBLNR)
             oDocumentHeader.SetValue("HEADER_TXT", pBKTXT)
