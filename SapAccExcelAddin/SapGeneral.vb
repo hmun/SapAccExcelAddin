@@ -40,14 +40,12 @@ Public Class SapGeneral
             assembly = System.Reflection.Assembly.GetExecutingAssembly()
             fileVersionInfo = System.Diagnostics.FileVersionInfo.GetVersionInfo(assembly.Location)
             aVersion = fileVersionInfo.ProductVersion
-            log.Debug("checkVersion - " & "aVersion=" & CStr(aVersion))
         Catch Exc As System.Exception
             log.Debug("checkVersion - " & "failed to read assembly versions using default")
             aVersion = cVersion
-            log.Debug("checkVersion - " & "aVersion=" & CStr(aVersion))
         End Try
-        log.Debug("checkVersion - " & "using default version")
-        aVersion = cVersion
+        '        log.Debug("checkVersion - " & "using default version")
+        '        aVersion = cVersion
         log.Debug("checkVersion - " & "aVersion=" & CStr(aVersion))
         If aVersion > aToVersion Or aVersion < aFromVersion Then
             ' try Publish Version

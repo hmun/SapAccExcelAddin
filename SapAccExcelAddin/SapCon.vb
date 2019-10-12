@@ -72,7 +72,7 @@ Public Class SapCon
                 destination = dest.CreateCustomDestination()
                 log.Debug("checkCon - " & "using destination.Name=" & destination.Name)
             Catch Ex As System.Exception
-                MsgBox("Error reading destination " & aDest & "! Check the connection settings in SAP-Con",
+                MsgBox("Error reading destination " & aDest & "! Check the connection settings in the sap_connections.config file and the SAP-Con sheet",
                        MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SapCon")
                 checkCon = 16
                 log.Error("checkCon - Exception=" & Ex.ToString)

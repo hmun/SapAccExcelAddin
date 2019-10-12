@@ -4,6 +4,8 @@
 
 Imports Microsoft.Office.Tools.Ribbon
 Imports SAP.Middleware.Connector
+Imports System.Configuration
+Imports System.Collections.Specialized
 
 Public Class SapAccRibbon
     Private aSapCon
@@ -101,7 +103,23 @@ Public Class SapAccRibbon
 
 
     Private Sub SapAccRibbon_Load(ByVal sender As System.Object, ByVal e As RibbonUIEventArgs) Handles MyBase.Load
+        Dim sAll As NameValueCollection
+        Dim s As String
+        Dim enableInvoiceReposting As Boolean = False
         aSapGeneral = New SapGeneral
+        Try
+            sAll = ConfigurationManager.AppSettings
+            s = sAll("enableInvoiceReposting")
+            enableInvoiceReposting = Convert.ToBoolean(s)
+
+        Catch Exc As System.Exception
+            log.Error("SapAccRibbon_Load - " & "Exception=" & Exc.ToString)
+        End Try
+        If Not enableInvoiceReposting Then
+            Globals.Ribbons.SapAccRibbon.Invoice.Visible = False
+        Else
+            Globals.Ribbons.SapAccRibbon.Invoice.Visible = True
+        End If
     End Sub
 
     Private Sub SAP_AccDoc_execute(pTest As Boolean)
