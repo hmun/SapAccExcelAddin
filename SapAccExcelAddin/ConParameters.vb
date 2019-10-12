@@ -37,6 +37,22 @@ Public Class ConParamterRec
         aSncPartnerName = New TField
     End Sub
 
+    Public Function setValues(pId As Integer, pSapConnectionConfigElement As SapConnectionConfigElement)
+        aID = sTField.create("ID", CStr(pId))
+        aName = sTField.create("Name", CStr(pSapConnectionConfigElement.Name))
+        aAppServerHost = sTField.create("AppServerHost", CStr(pSapConnectionConfigElement.AppServerHost))
+        aSystemNumber = sTField.create("SystemNumber", CStr(pSapConnectionConfigElement.SystemNumber))
+        aSystemID = sTField.create("SystemID", CStr(pSapConnectionConfigElement.SystemID))
+        '        aMessageServerHost = sTField.create("MessageServerHost", CStr(pSapConnectionConfigElement.MessageServerHost))
+        '        aLogonGroup = sTField.create("LogonGroup", CStr(pLogonGroup))
+        '        aTrace = sTField.create("Trace", CStr(pTrace))
+        aClient = sTField.create("Client", CStr(pSapConnectionConfigElement.Client))
+        aLanguage = sTField.create("Language", CStr(pSapConnectionConfigElement.Language))
+        aSncMode = sTField.create("SncMode", CStr(pSapConnectionConfigElement.SncMode))
+        '        aSncMyName = sTField.create("SncMyName", CStr(pSncMyName))
+        aSncPartnerName = sTField.create("SncPartnerName", CStr(pSapConnectionConfigElement.SncPartnerName))
+    End Function
+
     Public Function setValues(pID As String, pName As String, pAppServerHost As String, pSystemNumber As String, pSystemID As String, pMessageServerHost As String, pLogonGroup As String, pTrace As String, pClient As String, pLanguage As String, pSncMode As String, pSncMyName As String, pSncPartnerName As String)
         aID = sTField.create("ID", CStr(pID))
         aName = sTField.create("Name", CStr(pName))
@@ -105,6 +121,20 @@ Public Class ConParameter
         sTField = New TField
         aConCol = New Collection
     End Sub
+
+    Public Function addCon(pID As Integer, pSapConnectionConfigElement As SapConnectionConfigElement)
+        Dim aConRec As ConParamterRec
+        Dim aKey As String
+        aKey = CStr(pID)
+        If contains(aConCol, aKey, "obj") Then
+            aConRec = aConCol(aKey)
+            aConRec.setValues(pID, pSapConnectionConfigElement)
+        Else
+            aConRec = New ConParamterRec
+            aConRec.setValues(pID, pSapConnectionConfigElement)
+            aConCol.Add(aConRec, aKey)
+        End If
+    End Function
 
     Public Function addCon(pID As String, pName As String, pAppServerHost As String, pSystemNumber As String, pSystemID As String, pMessageServerHost As String, pLogonGroup As String, pTrace As String, pClient As String, pLanguage As String, pSncMode As String, pSncMyName As String, pSncPartnerName As String)
         Dim aConRec As ConParamterRec

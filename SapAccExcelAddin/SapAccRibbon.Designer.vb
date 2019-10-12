@@ -49,14 +49,19 @@
         Me.Logon = Me.Factory.CreateRibbonGroup
         Me.ButtonLogon = Me.Factory.CreateRibbonButton
         Me.ButtonLogoff = Me.Factory.CreateRibbonButton
+        Me.Invoice = Me.Factory.CreateRibbonGroup
+        Me.ButtonReadInvoices = Me.Factory.CreateRibbonButton
+        Me.ButtonGenGLData = Me.Factory.CreateRibbonButton
         Me.SapAcc.SuspendLayout()
         Me.Accounting.SuspendLayout()
         Me.Logon.SuspendLayout()
+        Me.Invoice.SuspendLayout()
         Me.SuspendLayout()
         '
         'SapAcc
         '
         Me.SapAcc.Groups.Add(Me.Accounting)
+        Me.SapAcc.Groups.Add(Me.Invoice)
         Me.SapAcc.Groups.Add(Me.Logon)
         Me.SapAcc.Label = "SAP FI"
         Me.SapAcc.Name = "SapAcc"
@@ -103,6 +108,25 @@
         Me.ButtonLogoff.Name = "ButtonLogoff"
         Me.ButtonLogoff.ShowImage = True
         '
+        'Invoice
+        '
+        Me.Invoice.Items.Add(Me.ButtonReadInvoices)
+        Me.Invoice.Items.Add(Me.ButtonGenGLData)
+        Me.Invoice.Label = "Invoice"
+        Me.Invoice.Name = "Invoice"
+        '
+        'ButtonReadInvoices
+        '
+        Me.ButtonReadInvoices.Label = "Read Invoices"
+        Me.ButtonReadInvoices.Name = "ButtonReadInvoices"
+        Me.ButtonReadInvoices.ScreenTip = "Read the Invoice data"
+        '
+        'ButtonGenGLData
+        '
+        Me.ButtonGenGLData.Label = "Generate GL-Data"
+        Me.ButtonGenGLData.Name = "ButtonGenGLData"
+        Me.ButtonGenGLData.ScreenTip = "Generate the GL Posting Data"
+        '
         'SapAccRibbon
         '
         Me.Name = "SapAccRibbon"
@@ -114,6 +138,8 @@
         Me.Accounting.PerformLayout()
         Me.Logon.ResumeLayout(False)
         Me.Logon.PerformLayout()
+        Me.Invoice.ResumeLayout(False)
+        Me.Invoice.PerformLayout()
         Me.ResumeLayout(False)
 
     End Sub
@@ -125,6 +151,9 @@
     Friend WithEvents ButtonPostAccDoc As Microsoft.Office.Tools.Ribbon.RibbonButton
     Friend WithEvents ButtonLogon As Microsoft.Office.Tools.Ribbon.RibbonButton
     Friend WithEvents ButtonLogoff As Microsoft.Office.Tools.Ribbon.RibbonButton
+    Friend WithEvents Invoice As Microsoft.Office.Tools.Ribbon.RibbonGroup
+    Friend WithEvents ButtonReadInvoices As Microsoft.Office.Tools.Ribbon.RibbonButton
+    Friend WithEvents ButtonGenGLData As Microsoft.Office.Tools.Ribbon.RibbonButton
 End Class
 
 Partial Class ThisRibbonCollection

@@ -5,10 +5,12 @@
 Imports SAP.Middleware.Connector
 Imports System.Configuration
 Imports System.Collections.Specialized
+Imports System.Environment
+Imports System.Uri
+Imports System.IO
 
 Public Class SapExcelDestinationConfiguration
     Private Shared ReadOnly log As log4net.ILog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
-
     Private Shared inMemoryDestinationConfiguration As New SapInMemoryDestinationConfiguration()
 
     Public Shared Sub SetUp()
@@ -32,20 +34,59 @@ Public Class SapExcelDestinationConfiguration
     End Sub
 
     Public Shared Sub ConfigAddOrChangeDestination()
+        Dim conParam() As String = {"Name", "AppServerHost", "SystemNumber", "SystemID", "Client", "Language", "SncMode", "SncPartnerName"}
         Dim conParameter As New ConParameter
         Dim parameters As New RfcConfigParameters()
         Dim sAll As NameValueCollection
         Dim iD As String
         Dim par As String
-        sAll = ConfigurationSettings.AppSettings()
+
+        Dim assemblyName As System.Reflection.AssemblyName = System.Reflection.Assembly.GetExecutingAssembly().GetName()
+        Dim assembly As String = assemblyName.Name
+        Dim appData As String = GetFolderPath(Environment.SpecialFolder.ApplicationData)
+        Dim configFile = appData & "\SapExcel\" & assembly & "\sap_connections.config"
+        If Not System.IO.File.Exists(configFile) Then
+            appData = GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
+            configFile = appData & "\SapExcel\" & assembly & "\sap_connections.config"
+            If Not System.IO.File.Exists(configFile) Then
+                appData = New Uri(System.Reflection.Assembly.GetExecutingAssembly().CodeBase).AbsolutePath
+                appData = Path.GetDirectoryName(appData)
+                configFile = appData & "\sap_connections.config"
+                If Not System.IO.File.Exists(configFile) Then
+                    configFile = ""
+                End If
+            End If
+        End If
+        Dim config As Configuration
+        Dim configMap As New ExeConfigurationFileMap
         Dim s As String
-        For Each s In sAll.AllKeys
-            iD = Right(s, 1)
-            par = Left(s, Len(s) - 1)
-            log.Debug("ConfigAddOrChangeDestination - conParameter.addConValue iD=" & CStr(iD) & " Field=" & par & " Value=" & CStr(sAll(s)))
-            conParameter.addConValue(iD, par, CStr(sAll(s)))
-            Console.WriteLine("Key: " & s & " Value: " & sAll(s))
-        Next
+        If Not configFile = "" Then
+            Try
+                configMap.ExeConfigFilename = configFile
+                config = TryCast(ConfigurationManager.OpenMappedExeConfiguration(configMap, ConfigurationUserLevel.None), Configuration)
+                Dim sapConnectionSection As SapConnectionSection = TryCast(config.GetSection("SAPConnections"), SapConnectionSection)
+                If sapConnectionSection Is Nothing Then
+                    log.Error("ConfigAddOrChangeDestination -" & "failed TypeOf read SAPConnections in " & configFile)
+                Else
+                    For i As Integer = 0 To sapConnectionSection.SapConnections.Count - 1
+                        log.Debug("ConfigAddOrChangeDestination - config file contains name=" & sapConnectionSection.SapConnections(i).Name)
+                        conParameter.addCon(i, sapConnectionSection.SapConnections(i))
+                    Next i
+                End If
+            Catch Exc As System.Exception
+                log.Error("ConfigAddOrChangeDestination - parsing sap_connections.config, Exception=" & Exc.ToString)
+            End Try
+        Else
+            sAll = ConfigurationSettings.AppSettings()
+            For Each s In sAll.AllKeys
+                iD = Right(s, 1)
+                par = Left(s, Len(s) - 1)
+                If conParam.Contains(par) Then
+                    log.Debug("ConfigAddOrChangeDestination - conParameter.addConValue iD=" & CStr(iD) & " Field=" & par & " Value=" & CStr(sAll(s)))
+                    conParameter.addConValue(iD, par, CStr(sAll(s)))
+                End If
+            Next
+        End If
         Dim conRec As ConParamterRec
         For Each conRec In conParameter.aConCol
             parameters = New RfcConfigParameters()

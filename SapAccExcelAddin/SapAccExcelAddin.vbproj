@@ -151,17 +151,13 @@
     <Reference Include="log4net, Version=2.0.8.0, Culture=neutral, PublicKeyToken=669e0ddf0bb1aa2a, processorArchitecture=MSIL">
       <HintPath>..\packages\log4net.2.0.8\lib\net45-full\log4net.dll</HintPath>
     </Reference>
-    <Reference Include="sapnco_utils_x64">
-      <HintPath>..\..\sapnco\sapnco_utils_x64.dll</HintPath>
-    </Reference>
     <Reference Include="sapnco_utils_x86">
       <HintPath>..\..\sapnco\sapnco_utils_x86.dll</HintPath>
-    </Reference>
-    <Reference Include="sapnco_x64">
-      <HintPath>..\..\sapnco\sapnco_x64.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="sapnco_x86">
       <HintPath>..\..\sapnco\sapnco_x86.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
@@ -230,6 +226,7 @@
     <Compile Include="FormDestinations.vb">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="SapConfig.vb" />
     <Compile Include="SAPZ_BC_EXCEL_ADDIN_VERS_CHK.vb" />
     <Compile Include="TField.vb" />
     <Compile Include="DateFormatString.vb" />
@@ -300,6 +297,9 @@
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
+    <None Include="sap_connections.config">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>

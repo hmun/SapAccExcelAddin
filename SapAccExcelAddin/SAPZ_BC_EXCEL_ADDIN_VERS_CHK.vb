@@ -6,6 +6,7 @@ Imports SAP.Middleware.Connector
 
 Public Class SAPZ_BC_EXCEL_ADDIN_VERS_CHK
 
+    Private Shared ReadOnly log As log4net.ILog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     Private oRfcFunction As IRfcFunction
     Private destination As RfcCustomDestination
     Private sapcon As SapCon
@@ -13,10 +14,13 @@ Public Class SAPZ_BC_EXCEL_ADDIN_VERS_CHK
     Sub New(aSapCon As SapCon)
         sapcon = aSapCon
         destination = aSapCon.getDestination()
+        log.Debug("New - " & "creating Function Z_BC_EXCEL_ADDIN_VERS_CHK")
         Try
             oRfcFunction = destination.Repository.CreateFunction("Z_BC_EXCEL_ADDIN_VERS_CHK")
+            log.Debug("New - " & "oRfcFunction.Metadata.Name=" & oRfcFunction.Metadata.Name)
         Catch ex As Exception
             oRfcFunction = Nothing
+            log.Warn("New - Exception=" & ex.ToString)
         End Try
     End Sub
 
@@ -25,8 +29,10 @@ Public Class SAPZ_BC_EXCEL_ADDIN_VERS_CHK
         If oRfcFunction Is Nothing Then
             ' for systems that do not contain Z_BC_EXCEL_ADDIN_VERS_CHK we can not check the version
             checkVersion = 0
+            log.Debug("checkVersion - " & "oRfcFunction is Nothing, skiping check. checkVersion=" & checkVersion)
         Else
             Try
+                log.Debug("checkVersion - " & "Setting Function parameters")
                 Dim oRETURN As IRfcTable = oRfcFunction.GetTable("T_RETURN")
                 Dim oE_ALLOWED_VERSION As IRfcStructure = oRfcFunction.GetStructure("E_ALLOWED_VERSION")
                 oRETURN.Clear()
@@ -34,7 +40,9 @@ Public Class SAPZ_BC_EXCEL_ADDIN_VERS_CHK
                 oRfcFunction.SetValue("I_ADDIN", pAddIn)
                 oRfcFunction.SetValue("I_VERSION", pVersion)
 
+                log.Debug("checkVersion - " & "invoking " & oRfcFunction.Metadata.Name)
                 oRfcFunction.Invoke(destination)
+                log.Debug("checkVersion - " & "oRETURN.Count=" & CStr(oRETURN.Count))
                 If oRETURN.Count > 0 Then
                     If oRETURN(0).GetValue("TYPE") = "S" Then
                         checkVersion = 0
@@ -44,6 +52,7 @@ Public Class SAPZ_BC_EXCEL_ADDIN_VERS_CHK
                 Else
                     checkVersion = 8
                 End If
+                log.Debug("checkVersion - " & "checkVersion=" & CStr(checkVersion))
             Catch abap_ex As RfcAbapBaseException
                 Select Case abap_ex.Message
                     Case "WRONG_VERSION_FORMAT"
@@ -55,10 +64,12 @@ Public Class SAPZ_BC_EXCEL_ADDIN_VERS_CHK
                     Case Else
                         checkVersion = 8
                 End Select
+                log.Debug("checkVersion - " & "abap_ex= " & abap_ex.Message & ", checkVersion=" & CStr(checkVersion))
                 Exit Function
             Catch ex As Exception
                 MsgBox("Exception in checkVersion! " & ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SAPZ_BC_EXCEL_ADDIN_VERS_CHK")
                 checkVersion = 8
+                log.Error("checkVersion - " & "ex= " & ex.ToString & ", checkVersion=" & CStr(checkVersion))
             End Try
         End If
         Exit Function
