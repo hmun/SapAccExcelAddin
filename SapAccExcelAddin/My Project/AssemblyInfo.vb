@@ -10,10 +10,10 @@ Imports System.Security
 ' Review the values of the assembly attributes
 
 <Assembly: AssemblyTitle("SapAccExcelAddin")> 
-<Assembly: AssemblyDescription("")> 
-<Assembly: AssemblyCompany("Microsoft")> 
-<Assembly: AssemblyProduct("SapAccExcelAddin")> 
-<Assembly: AssemblyCopyright("Copyright © Microsoft 2016")> 
+<Assembly: AssemblyDescription("")>
+<Assembly: AssemblyCompany("Hermann Mundprecht")>
+<Assembly: AssemblyProduct("SapAccExcelAddin")>
+<Assembly: AssemblyCopyright("Hermann Mundprecht")>
 <Assembly: AssemblyTrademark("")> 
 
 ' Setting ComVisible to false makes the types in this assembly not visible 

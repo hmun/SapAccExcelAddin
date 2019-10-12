@@ -8,6 +8,7 @@ Imports SAP.Middleware.Connector
 Public Class SapAccRibbon
     Private aSapCon
     Private aSapGeneral
+    Private Shared ReadOnly log As log4net.ILog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     Const CP = 48 'column of post indicator
     Const CD = 49 'column of first header value
     Const CM = 58 'column of return message
@@ -15,64 +16,85 @@ Public Class SapAccRibbon
     Private Sub ButtonCheckAccDoc_Click(sender As Object, e As RibbonControlEventArgs) Handles ButtonCheckAccDoc.Click
         Dim aSapConRet As Integer
         Dim aSapVersionRet As Integer
+        log.Debug("ButtonCheckAccDoc_Click - " & "checking Version")
         If Not aSapGeneral.checkVersion() Then
             Exit Sub
         End If
+        log.Debug("ButtonCheckAccDoc_Click - " & "checking Connection")
         aSapConRet = 0
         If aSapCon Is Nothing Then
-            aSapCon = New SapCon
+            aSapCon = New SapCon()
         End If
         aSapConRet = aSapCon.checkCon()
         If aSapConRet = 0 Then
+            log.Debug("ButtonCheckAccDoc_Click - " & "checking version in SAP")
             aSapVersionRet = aSapGeneral.checkVersionInSAP(aSapCon)
+            log.Debug("ButtonPostAccDoc_Click - " & "aSapVersionRet=" & CStr(aSapVersionRet))
             If aSapVersionRet = True Then
+                log.Debug("ButtonCheckAccDoc_Click - " & "calling SAP_AccDoc_execute")
                 SAP_AccDoc_execute(pTest:=True)
             End If
         Else
-                aSapCon = Nothing
+            log.Debug("ButtonCheckAccDoc_Click - " & "connection check failed")
+            aSapCon = Nothing
         End If
     End Sub
     Private Sub ButtonPostAccDoc_Click(sender As Object, e As RibbonControlEventArgs) Handles ButtonPostAccDoc.Click
         Dim aSapConRet As Integer
         Dim aSapVersionRet As Integer
+        log.Debug("ButtonPostAccDoc_Click - " & "checking Version")
         If Not aSapGeneral.checkVersion() Then
             Exit Sub
         End If
+        log.Debug("ButtonPostAccDoc_Click - " & "checking Connection")
         aSapConRet = 0
         If aSapCon Is Nothing Then
-            aSapCon = New SapCon
+            aSapCon = New SapCon()
         End If
         aSapConRet = aSapCon.checkCon()
         If aSapConRet = 0 Then
+            log.Debug("ButtonPostAccDoc_Click - " & "checking version in SAP")
             aSapVersionRet = aSapGeneral.checkVersionInSAP(aSapCon)
+            log.Debug("ButtonPostAccDoc_Click - " & "aSapVersionRet=" & CStr(aSapVersionRet))
             If aSapVersionRet = True Then
+                log.Debug("ButtonPostAccDoc_Click - " & "calling SAP_AccDoc_execute")
                 SAP_AccDoc_execute(pTest:=False)
             End If
         Else
+            log.Debug("ButtonPostAccDoc_Click - " & "connection check failed")
             aSapCon = Nothing
         End If
     End Sub
 
     Private Sub ButtonLogoff_Click(sender As Object, e As RibbonControlEventArgs) Handles ButtonLogoff.Click
+        log.Debug("ButtonLogoff_Click - " & "starting logoff")
         If Not aSapCon Is Nothing Then
+            log.Debug("ButtonLogoff_Click - " & "calling aSapCon.SAPlogoff()")
             aSapCon.SAPlogoff()
             aSapCon = Nothing
         End If
+        log.Debug("ButtonLogoff_Click - " & "exit")
     End Sub
 
     Private Sub ButtonLogon_Click(sender As Object, e As RibbonControlEventArgs) Handles ButtonLogon.Click
         Dim aConRet As Integer
 
+        log.Debug("ButtonLogon_Click - " & "checking Version")
         If Not aSapGeneral.checkVersion() Then
+            log.Debug("ButtonLogon_Click - " & "Version check failed")
             Exit Sub
         End If
+        log.Debug("ButtonLogon_Click - " & "creating SapCon")
         If aSapCon Is Nothing Then
-            aSapCon = New SapCon
+            aSapCon = New SapCon()
         End If
+        log.Debug("ButtonLogon_Click - " & "calling SapCon.checkCon()")
         aConRet = aSapCon.checkCon()
         If aConRet = 0 Then
+            log.Debug("ButtonLogon_Click - " & "connection successfull")
             MsgBox("SAP-Logon successful! ", MsgBoxStyle.OkOnly Or MsgBoxStyle.Information, "Sap Accounting")
         Else
+            log.Debug("ButtonLogon_Click - " & "connection failed")
             aSapCon = Nothing
         End If
     End Sub
@@ -134,6 +156,7 @@ Public Class SapAccRibbon
         Dim aDws As Excel.Worksheet
         Dim aPws As Excel.Worksheet
         Dim aWB As Excel.Workbook
+        log.Debug("SAP_AccDoc_execute - " & "reading Parameter")
         aWB = Globals.SapAccAddIn.Application.ActiveWorkbook
         Try
             aPws = aWB.Worksheets("Parameter")
@@ -168,8 +191,10 @@ Public Class SapAccRibbon
             aFKBERNAME = "FKBER"
         End If
         ' Check Authority
+        log.Debug("SAP_AccDoc_execute - " & "creating aSAPZFI_CHECK_F_BKPF_BUK")
         Dim aSAPZFI_CHECK_F_BKPF_BUK As New SAPZFI_CHECK_F_BKPF_BUK(aSapCon)
         Dim aAuth As Integer
+        log.Debug("SAP_AccDoc_execute - " & "reading Data")
         ' Read the Data
         Try
             aDws = aWB.Worksheets("SAP-Acc-Data")
@@ -178,23 +203,27 @@ Public Class SapAccRibbon
                    MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "Sap Accounting")
             Exit Sub
         End Try
-        aDws.Activate()
-        Globals.SapAccAddIn.Application.Cursor = Microsoft.Office.Interop.Excel.XlMousePointer.xlWait
-        Globals.SapAccAddIn.Application.EnableEvents = False
-        Globals.SapAccAddIn.Application.ScreenUpdating = False
-        i = 2
-        Do
-            aKONTO = CStr(aDws.Cells(i, 2).Value)
-            aMATNR = CStr(aDws.Cells(i, 3).Value)
-            aWERKS = CStr(aDws.Cells(i, 4).Value)
-            aLIFNR = CStr(aDws.Cells(i, 5).Value)
-            aKOSTL = CStr(aDws.Cells(i, 7).Value)
-            aAUFNR = CStr(aDws.Cells(i, 8).Value)
-            aSGTXT = CStr(aDws.Cells(i, 38).Value)
-            aMWSKZ = CStr(aDws.Cells(i, 39).Value)
-            aBETRA = CDbl(aDws.Cells(i, 42).Value)
 
-            aSAPDocItem = aSAPDocItem.create(CStr(aDws.Cells(i, 1).Value), aKONTO, aBETRA, aMWSKZ, aSGTXT, aAUFNR, aMATNR, aWERKS, aKOSTL, aLIFNR,
+        aDws.Activate()
+        ' process the data
+        Try
+            log.Debug("SAP_AccDoc_execute - " & "processing data - disabling events, screen update, cursor")
+            Globals.SapAccAddIn.Application.Cursor = Microsoft.Office.Interop.Excel.XlMousePointer.xlWait
+            Globals.SapAccAddIn.Application.EnableEvents = False
+            Globals.SapAccAddIn.Application.ScreenUpdating = False
+            i = 2
+            Do
+                aKONTO = CStr(aDws.Cells(i, 2).Value)
+                aMATNR = CStr(aDws.Cells(i, 3).Value)
+                aWERKS = CStr(aDws.Cells(i, 4).Value)
+                aLIFNR = CStr(aDws.Cells(i, 5).Value)
+                aKOSTL = CStr(aDws.Cells(i, 7).Value)
+                aAUFNR = CStr(aDws.Cells(i, 8).Value)
+                aSGTXT = CStr(aDws.Cells(i, 38).Value)
+                aMWSKZ = CStr(aDws.Cells(i, 39).Value)
+                aBETRA = CDbl(aDws.Cells(i, 42).Value)
+
+                aSAPDocItem = aSAPDocItem.create(CStr(aDws.Cells(i, 1).Value), aKONTO, aBETRA, aMWSKZ, aSGTXT, aAUFNR, aMATNR, aWERKS, aKOSTL, aLIFNR,
                                             CStr(aDws.Cells(i, 14).Value), CStr(aDws.Cells(i, 15).Value), CStr(aDws.Cells(i, 16).Value), CStr(aDws.Cells(i, 17).Value),
                                             CStr(aDws.Cells(i, 18).Value), CStr(aDws.Cells(i, 19).Value), CStr(aDws.Cells(i, 21).Value),
                                             CStr(aDws.Cells(i, 30).Value), CStr(aDws.Cells(i, 34).Value), CStr(aDws.Cells(i, 41).Value),
@@ -208,73 +237,87 @@ Public Class SapAccRibbon
                                             CStr(aDws.Cells(i, 47).Value), CStr(aDws.Cells(i, 35).Value), CStr(aDws.Cells(i, 36).Value),
                                             CStr(aDws.Cells(i, 40).Value), CStr(aDws.Cells(i, 30).Value), CStr(aDws.Cells(i, 31).Value), CStr(aDws.Cells(i, 32).Value),
                                             CStr(aDws.Cells(i, 12).Value), CStr(aDws.Cells(i, 13).Value), CStr(aDws.Cells(i, 37).Value))
-            aData.Add(aSAPDocItem)
-            If (aDws.Cells(i, CP).Value = "X" Or aDws.Cells(i, CP).Value = "x") Then
-                If InStr(1, aDws.Cells(i, CM).Value, "BKPFF") = 0 Then
-                    If CStr(aDws.Cells(i, CD).Value) <> "" Then
-                        aBUDAT = CDate(aDws.Cells(i, CD).Value)
-                    Else
-                        aBUDAT = adBUDAT
-                    End If
-                    If CStr(aDws.Cells(i, CD + 1).Value) <> "" Then
-                        aBLDAT = CDate(aDws.Cells(i, CD + 1).Value)
-                    Else
-                        aBLDAT = adBLDAT
-                    End If
-                    If CStr(aDws.Cells(i, CD + 2).Value) <> "" Then
-                        aXBLNR = CStr(aDws.Cells(i, CD + 2).Value)
-                    Else
-                        aXBLNR = adXBLNR
-                    End If
-                    If CStr(aDws.Cells(i, CD + 3).Value) <> "" Then
-                        aBKTXT = CStr(aDws.Cells(i, CD + 3).Value)
-                    Else
-                        aBKTXT = adBKTXT
-                    End If
-                    If CStr(aDws.Cells(i, CD + 4).Value) <> "" Then
-                        aBUKRS = CStr(aDws.Cells(i, CD + 4).Value)
-                    Else
-                        aBUKRS = adBUKRS
-                    End If
-                    If CStr(aDws.Cells(i, CD + 5).Value) <> "" Then
-                        aWAERS = CStr(aDws.Cells(i, CD + 5).Value)
-                    Else
-                        aWAERS = adWAERS
-                    End If
-                    If CStr(aDws.Cells(i, CD + 6).Value) <> "" Then
-                        aBLART = CStr(aDws.Cells(i, CD + 6).Value)
-                    Else
-                        aBLART = adBLART
-                    End If
-                    If CStr(aDws.Cells(i, CD + 7).Value) <> "" Then
-                        aFIS_PERIOD = CStr(aDws.Cells(i, CD + 7).Value)
-                    Else
-                        aFIS_PERIOD = adFIS_PERIOD
-                    End If
-                    If CStr(aDws.Cells(i, CD + 8).Value) <> "" Then
-                        aACC_PRINCIPLE = CStr(aDws.Cells(i, CD + 8).Value)
-                    Else
-                        aACC_PRINCIPLE = adACC_PRINCIPLE
-                    End If
-                    If InStr(1, CStr(aDws.Cells(i, CM).Value), "BKPFF") = 0 Then
-                        aAuth = aSAPZFI_CHECK_F_BKPF_BUK.checkAuthority(aBUKRS)
-                        If aAuth <> 2 Then
-                            aDws.Cells(i, CM) = "User not authorized for company code " & aBUKRS
+                aData.Add(aSAPDocItem)
+                If (aDws.Cells(i, CP).Value = "X" Or aDws.Cells(i, CP).Value = "x") Then
+                    log.Debug("SAP_AccDoc_execute - " & "found posting indicator, aData.Count=" & CStr(aData.Count))
+                    If InStr(1, aDws.Cells(i, CM).Value, "BKPFF") = 0 Then
+                        If CStr(aDws.Cells(i, CD).Value) <> "" Then
+                            aBUDAT = CDate(aDws.Cells(i, CD).Value)
                         Else
-                            aRetStr = aSAPAcctngDocument.post(aBLDAT, aBLART, aBUKRS, aBUDAT, aWAERS, aXBLNR, aBKTXT, aFIS_PERIOD, aACC_PRINCIPLE, aData, pTest, aFKBERNAME)
-                            aDws.Cells(i, CM) = CStr(aRetStr)
-                            aDws.Cells(i, CM + 1) = CStr(ExtractDocNumberFromMessage(aRetStr))
+                            aBUDAT = adBUDAT
+                        End If
+                        If CStr(aDws.Cells(i, CD + 1).Value) <> "" Then
+                            aBLDAT = CDate(aDws.Cells(i, CD + 1).Value)
+                        Else
+                            aBLDAT = adBLDAT
+                        End If
+                        If CStr(aDws.Cells(i, CD + 2).Value) <> "" Then
+                            aXBLNR = CStr(aDws.Cells(i, CD + 2).Value)
+                        Else
+                            aXBLNR = adXBLNR
+                        End If
+                        If CStr(aDws.Cells(i, CD + 3).Value) <> "" Then
+                            aBKTXT = CStr(aDws.Cells(i, CD + 3).Value)
+                        Else
+                            aBKTXT = adBKTXT
+                        End If
+                        If CStr(aDws.Cells(i, CD + 4).Value) <> "" Then
+                            aBUKRS = CStr(aDws.Cells(i, CD + 4).Value)
+                        Else
+                            aBUKRS = adBUKRS
+                        End If
+                        If CStr(aDws.Cells(i, CD + 5).Value) <> "" Then
+                            aWAERS = CStr(aDws.Cells(i, CD + 5).Value)
+                        Else
+                            aWAERS = adWAERS
+                        End If
+                        If CStr(aDws.Cells(i, CD + 6).Value) <> "" Then
+                            aBLART = CStr(aDws.Cells(i, CD + 6).Value)
+                        Else
+                            aBLART = adBLART
+                        End If
+                        If CStr(aDws.Cells(i, CD + 7).Value) <> "" Then
+                            aFIS_PERIOD = CStr(aDws.Cells(i, CD + 7).Value)
+                        Else
+                            aFIS_PERIOD = adFIS_PERIOD
+                        End If
+                        If CStr(aDws.Cells(i, CD + 8).Value) <> "" Then
+                            aACC_PRINCIPLE = CStr(aDws.Cells(i, CD + 8).Value)
+                        Else
+                            aACC_PRINCIPLE = adACC_PRINCIPLE
+                        End If
+                        If InStr(1, CStr(aDws.Cells(i, CM).Value), "BKPFF") = 0 Then
+                            log.Debug("SAP_AccDoc_execute - " & "calling aSAPZFI_CHECK_F_BKPF_BUK.checkAuthority(aBUKRS), aBUKRS=" & aBUKRS)
+                            aAuth = aSAPZFI_CHECK_F_BKPF_BUK.checkAuthority(aBUKRS)
+                            log.Debug("SAP_AccDoc_execute - " & "aAuth=" & CStr(aAuth))
+                            If aAuth <> 2 Then
+                                log.Debug("SAP_AccDoc_execute - " & "User not authorized for company code " & aBUKRS)
+                                aDws.Cells(i, CM) = "User not authorized for company code " & aBUKRS
+                            Else
+                                log.Debug("SAP_AccDoc_execute - " & "calling aSAPAcctngDocument.post, pTest=" & CStr(pTest))
+                                aRetStr = aSAPAcctngDocument.post(aBLDAT, aBLART, aBUKRS, aBUDAT, aWAERS, aXBLNR, aBKTXT, aFIS_PERIOD, aACC_PRINCIPLE, aData, pTest, aFKBERNAME)
+                                log.Debug("SAP_AccDoc_execute - " & "aSAPAcctngDocument.post returned, aRetStr=" & aRetStr)
+                                aDws.Cells(i, CM) = CStr(aRetStr)
+                                aDws.Cells(i, CM + 1) = CStr(ExtractDocNumberFromMessage(aRetStr))
+                            End If
                         End If
                     End If
+                    aDws.Cells(i, CM + 1) = CStr(ExtractDocNumberFromMessage(aDws.Cells(i, CM).Value))
+                    log.Debug("SAP_AccDoc_execute - " & "ExtractDocNumberFromMessage=" & CStr(ExtractDocNumberFromMessage(aDws.Cells(i, CM).Value)))
+                    log.Debug("SAP_AccDoc_execute - " & "starting new aData")
+                    aData = New Collection
                 End If
-                aDws.Cells(i, CM + 1) = CStr(ExtractDocNumberFromMessage(aDws.Cells(i, CM).Value))
-                aData = New Collection
-            End If
-            i = i + 1
-        Loop While CStr(aDws.Cells(i, 1).value) <> ""
-        Globals.SapAccAddIn.Application.EnableEvents = True
-        Globals.SapAccAddIn.Application.ScreenUpdating = True
-        Globals.SapAccAddIn.Application.Cursor = Microsoft.Office.Interop.Excel.XlMousePointer.xlDefault
+                i = i + 1
+            Loop While CStr(aDws.Cells(i, 1).value) <> ""
+            log.Debug("SAP_AccDoc_execute - " & "all data processed - enabling events, screen update, cursor")
+            Globals.SapAccAddIn.Application.EnableEvents = True
+            Globals.SapAccAddIn.Application.ScreenUpdating = True
+            Globals.SapAccAddIn.Application.Cursor = Microsoft.Office.Interop.Excel.XlMousePointer.xlDefault
+        Catch ex As System.Exception
+            MsgBox("SAP_AccDoc_execute failed! " & ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "Sap Accounting")
+            log.Error("SAP_AccDoc_execute - " & "Exception=" & ex.ToString)
+            Exit Sub
+        End Try
     End Sub
 
     Private Function ExtractDocNumberFromMessage(Message As String) As String

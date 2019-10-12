@@ -6,19 +6,21 @@ Imports SAP.Middleware.Connector
 
 Public Class SAPAcctngDocument
 
+    Private Shared ReadOnly log As log4net.ILog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     Private oRfcFunction As IRfcFunction
     Private destination As RfcCustomDestination
     Private sapcon As SapCon
 
     Sub New(aSapCon As SapCon)
         Try
+            log.Debug("New - " & "checking connection")
             sapcon = aSapCon
             destination = aSapCon.getDestination()
             sapcon.checkCon()
         Catch ex As System.Exception
+            log.Error("New - Exception=" & ex.ToString)
             MsgBox("New failed! " & ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SAPAcctngDocument")
         End Try
-
     End Sub
 
     Public Function post(pBLDAT As Date, pBLART As String, pBUKRS As String,
@@ -28,13 +30,18 @@ Public Class SAPAcctngDocument
         post = ""
         Try
             If pTest Then
+                log.Debug("post - " & "creating Function BAPI_ACC_DOCUMENT_CHECK")
                 oRfcFunction = destination.Repository.CreateFunction("BAPI_ACC_DOCUMENT_CHECK")
             Else
+                log.Debug("post - " & "creating Function BAPI_ACC_DOCUMENT_POST")
                 oRfcFunction = destination.Repository.CreateFunction("BAPI_ACC_DOCUMENT_POST")
             End If
+            log.Debug("post - " & "oRfcFunction.Metadata.Name=" & oRfcFunction.Metadata.Name)
+            log.Debug("post - " & "BeginContext")
             RfcSessionManager.BeginContext(destination)
             Dim lSAPFormat As New SAPFormat
             Dim lSAPWbsElement As New SAPWbsElement(sapcon)
+            log.Debug("post - " & "Getting Function parameters")
             Dim oDocumentHeader As IRfcStructure = oRfcFunction.GetStructure("DOCUMENTHEADER")
             Dim oAccountGl As IRfcTable = oRfcFunction.GetTable("ACCOUNTGL")
             Dim oAccountTax As IRfcTable = oRfcFunction.GetTable("ACCOUNTTAX")
@@ -53,6 +60,7 @@ Public Class SAPAcctngDocument
             oExtension2.Clear()
             oRETURN.Clear()
 
+            log.Debug("post - " & "setting header values")
             oDocumentHeader.SetValue("BUS_ACT", "RFBU")
             oDocumentHeader.SetValue("ACC_PRINCIPLE", pACC_PRINCIPLE)
             oDocumentHeader.SetValue("COMP_CODE", pBUKRS)
@@ -71,9 +79,11 @@ Public Class SAPAcctngDocument
             Dim lCnt As Integer
             Dim lCntSav As Integer
             lCnt = 0
+            log.Debug("post - " & "processing pData")
             For Each lRow In pData
                 lCnt = lCnt + 1
                 If lRow.ACCTYPE = "S" Or lRow.ACCTYPE = "G" Then
+                    log.Debug("post - " & "adding AccountGl ITEMNO_ACC=" & CStr(lCnt) & " GL_ACCOUNT=" & lSAPFormat.unpack(lRow.NEWKO, 10))
                     oAccountGl.Append()
                     oAccountGl.SetValue("ITEMNO_ACC", lCnt)
                     oAccountGl.SetValue("GL_ACCOUNT", lSAPFormat.unpack(lRow.NEWKO, 10))
@@ -294,6 +304,7 @@ Public Class SAPAcctngDocument
                     Dim lTaxLines As Integer
                     Dim oTAX_ITEM_OUT As IRfcTable
                     If lRow.MWSKZ <> "" Then
+                        log.Debug("post - " & "calling aSAPCalcTaxesFromGross.getTaxAmount")
                         oTAX_ITEM_OUT = aSAPCalcTaxesFromGross.getTaxAmount(pBUKRS, lRow.MWSKZ, pWAERS, pBUDAT, lRow.Betrag, lRow.TXJCD)
                         lTaxLines = oTAX_ITEM_OUT.Count
                         ' calculate the taxsum
@@ -302,6 +313,7 @@ Public Class SAPAcctngDocument
                             lTaxSum = lTaxSum + oTAX_ITEM_OUT(i).GetDouble("FWSTE")
                         Next i
                         lTaxBase = lRow.Betrag - lTaxSum
+                        log.Debug("post - " & "lTaxLines=" & CStr(lTaxLines) & " lTaxSum=" & CStr(lTaxSum) & " lTaxBase=" & CStr(lTaxBase))
                         ' change the ammount of the row to the net value
                         oCurrencyAmount.SetValue("AMT_DOCCUR", Format$(lTaxBase, "0.00"))
                         ' add the tax positions
@@ -329,6 +341,7 @@ Public Class SAPAcctngDocument
                         oCurrencyAmount.SetValue("CURRENCY", lRow.WAERS2)
                         oCurrencyAmount.SetValue("AMT_DOCCUR", Format$(lRow.BETR2, "0.00"))
                         If lRow.MWSKZ <> "" Then
+                            log.Debug("post - " & "calling aSAPCalcTaxesFromGross.getTaxAmount for BETR2")
                             oTAX_ITEM_OUT = aSAPCalcTaxesFromGross.getTaxAmount(pBUKRS, lRow.MWSKZ, lRow.WAERS2, pBUDAT, lRow.BETR2, lRow.TXJCD)
                             lTaxLines = oTAX_ITEM_OUT.Count
                             ' calculate the taxsum
@@ -337,6 +350,7 @@ Public Class SAPAcctngDocument
                                 lTaxSum = lTaxSum + oTAX_ITEM_OUT(i).GetDouble("FWSTE")
                             Next i
                             lTaxBase = lRow.BETR2 - lTaxSum
+                            log.Debug("post - " & "lTaxLines=" & CStr(lTaxLines) & " lTaxSum=" & CStr(lTaxSum) & " lTaxBase=" & CStr(lTaxBase))
                             ' change the ammount of the row to the net value
                             oCurrencyAmount.SetValue("AMT_DOCCUR", Format$(lTaxBase, "0.00"))
                             ' add the tax positions
@@ -361,6 +375,7 @@ Public Class SAPAcctngDocument
                         oCurrencyAmount.SetValue("CURRENCY", lRow.WAERS3)
                         oCurrencyAmount.SetValue("AMT_DOCCUR", Format$(lRow.BETR3, "0.00"))
                         If lRow.MWSKZ <> "" Then
+                            log.Debug("post - " & "calling aSAPCalcTaxesFromGross.getTaxAmount for BETR3")
                             oTAX_ITEM_OUT = aSAPCalcTaxesFromGross.getTaxAmount(pBUKRS, lRow.MWSKZ, lRow.WAERS3, pBUDAT, lRow.BETR3, lRow.TXJCD)
                             lTaxLines = oTAX_ITEM_OUT.Count
                             ' calculate the taxsum
@@ -369,6 +384,7 @@ Public Class SAPAcctngDocument
                                 lTaxSum = lTaxSum + oTAX_ITEM_OUT(i).GetDouble("FWSTE")
                             Next i
                             lTaxBase = lRow.BETR2 - lTaxSum
+                            log.Debug("post - " & "lTaxLines=" & CStr(lTaxLines) & " lTaxSum=" & CStr(lTaxSum) & " lTaxBase=" & CStr(lTaxBase))
                             ' change the ammount of the row to the net value
                             oCurrencyAmount.SetValue("AMT_DOCCUR", Format$(lTaxBase, "0.00"))
                             ' add the tax positions
@@ -393,6 +409,7 @@ Public Class SAPAcctngDocument
                         oCurrencyAmount.SetValue("CURRENCY", lRow.WAERS4)
                         oCurrencyAmount.SetValue("AMT_DOCCUR", Format$(lRow.BETR4, "0.00"))
                         If lRow.MWSKZ <> "" Then
+                            log.Debug("post - " & "calling aSAPCalcTaxesFromGross.getTaxAmount for BETR4")
                             oTAX_ITEM_OUT = aSAPCalcTaxesFromGross.getTaxAmount(pBUKRS, lRow.MWSKZ, lRow.WAERS4, pBUDAT, lRow.BETR4, lRow.TXJCD)
                             lTaxLines = oTAX_ITEM_OUT.Count
                             ' calculate the taxsum
@@ -401,6 +418,7 @@ Public Class SAPAcctngDocument
                                 lTaxSum = lTaxSum + oTAX_ITEM_OUT(i).GetDouble("FWSTE")
                             Next i
                             lTaxBase = lRow.BETR2 - lTaxSum
+                            log.Debug("post - " & "lTaxLines=" & CStr(lTaxLines) & " lTaxSum=" & CStr(lTaxSum) & " lTaxBase=" & CStr(lTaxBase))
                             ' change the ammount of the row to the net value
                             oCurrencyAmount.SetValue("AMT_DOCCUR", Format$(lTaxBase, "0.00"))
                             ' add the tax positions
@@ -419,6 +437,7 @@ Public Class SAPAcctngDocument
                     End If
                 End If
                 If lRow.ACCTYPE = "D" Or lRow.ACCTYPE = "C" Then
+                    log.Debug("post - " & "adding oAccountReceivable ITEMNO_ACC=" & CStr(lCnt) & " CUSTOMER=" & lSAPFormat.unpack(lRow.NEWKO, 10))
                     oAccountReceivable.Append()
                     oAccountReceivable.SetValue("ITEMNO_ACC", lCnt)
                     oAccountReceivable.SetValue("CUSTOMER", lSAPFormat.unpack(lRow.NEWKO, 10))
@@ -475,6 +494,7 @@ Public Class SAPAcctngDocument
                     End If
                 End If
                 If lRow.ACCTYPE = "K" Or lRow.ACCTYPE = "V" Then
+                    log.Debug("post - " & "adding oAccountPayable ITEMNO_ACC=" & CStr(lCnt) & " VENDOR_NO=" & lSAPFormat.unpack(lRow.NEWKO, 10))
                     oAccountPayable.Append()
                     oAccountPayable.SetValue("ITEMNO_ACC", lCnt)
                     oAccountPayable.SetValue("VENDOR_NO", lSAPFormat.unpack(lRow.NEWKO, 10))
@@ -532,11 +552,14 @@ Public Class SAPAcctngDocument
                 End If
             Next lRow
             ' call the BAPI
+            log.Debug("post - " & "invoking " & oRfcFunction.Metadata.Name)
             oRfcFunction.Invoke(destination)
+            log.Debug("post - " & "oRETURN.Count=" & CStr(oRETURN.Count))
             If oRETURN.Count > 0 Then
                 If oRETURN(0).GetValue("TYPE") = "S" Then
                     Dim aSAPBapiTranctionCommit As New SAPBapiTranctionCommit(sapcon)
                     If Not pTest Then
+                        log.Debug("post - " & "calling aSAPBapiTranctionCommit.commit()")
                         aSAPBapiTranctionCommit.commit()
                     End If
                     post = oRETURN(0).GetValue("MESSAGE")
@@ -546,12 +569,15 @@ Public Class SAPAcctngDocument
                     Next i
                 End If
             Else
+                log.Debug("post - " & "Error: No Return message from SAP")
                 post = "Error: No Return message from SAP"
             End If
         Catch Ex As System.Exception
+            log.Error("commit - Exception=" & Ex.ToString)
             MsgBox("Error: Exception " & Ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SAPAcctngDocument")
             post = "Error: Exception in posting"
         Finally
+            log.Debug("post - " & "EndContext")
             RfcSessionManager.EndContext(destination)
         End Try
     End Function

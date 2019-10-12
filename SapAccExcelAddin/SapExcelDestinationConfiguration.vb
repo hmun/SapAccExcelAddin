@@ -7,15 +7,18 @@ Imports System.Configuration
 Imports System.Collections.Specialized
 
 Public Class SapExcelDestinationConfiguration
+    Private Shared ReadOnly log As log4net.ILog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
 
     Private Shared inMemoryDestinationConfiguration As New SapInMemoryDestinationConfiguration()
 
     Public Shared Sub SetUp()
         '' register the in-memory destination configuration -- called before executing any of the examples
+        log.Debug("SetUp - " & "RegisterDestinationConfiguration")
         Try
             RfcDestinationManager.RegisterDestinationConfiguration(inMemoryDestinationConfiguration)
         Catch Exc As System.Exception
             MsgBox(Exc.ToString, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SapExcelDestinationConfiguration;SetUp")
+            log.Error("SetUp - Exception=" & Exc.ToString)
             Exit Sub
         End Try
     End Sub
@@ -39,6 +42,7 @@ Public Class SapExcelDestinationConfiguration
         For Each s In sAll.AllKeys
             iD = Right(s, 1)
             par = Left(s, Len(s) - 1)
+            log.Debug("ConfigAddOrChangeDestination - conParameter.addConValue iD=" & CStr(iD) & " Field=" & par & " Value=" & CStr(sAll(s)))
             conParameter.addConValue(iD, par, CStr(sAll(s)))
             Console.WriteLine("Key: " & s & " Value: " & sAll(s))
         Next
@@ -72,7 +76,12 @@ Public Class SapExcelDestinationConfiguration
                     parameters(RfcConfigParameters.SncMyName) = conRec.aSncMyName.Value
                 End If
             End If
-            inMemoryDestinationConfiguration.AddOrEditDestination(parameters)
+            log.Debug("ConfigAddOrChangeDestination - inMemoryDestinationConfiguration.AddOrEditDestination Name=" & conRec.aName.Value)
+            Try
+                inMemoryDestinationConfiguration.AddOrEditDestination(parameters)
+            Catch Exc As System.Exception
+                log.Error("ConfigAddOrChangeDestination - Exception=" & Exc.ToString)
+            End Try
         Next
     End Sub
 
@@ -95,6 +104,7 @@ Public Class SapExcelDestinationConfiguration
         Do Until CStr(aPws.Cells(2, i).value) = ""
             For j = 2 To 12
                 If CStr(aPws.Cells(j, i).value) <> "" Then
+                    log.Debug("ExcelAddOrChangeDestination - conParameter.addConValue iD=" & CStr(i - 2) & " Field=" & CStr(aPws.Cells(j, 1).value) & " Value=" & CStr(aPws.Cells(j, i).value))
                     conParameter.addConValue(CStr(i - 2), CStr(aPws.Cells(j, 1).value), CStr(aPws.Cells(j, i).value))
                 End If
             Next
@@ -130,18 +140,25 @@ Public Class SapExcelDestinationConfiguration
                     parameters(RfcConfigParameters.SncMyName) = conRec.aSncMyName.Value
                 End If
             End If
-            inMemoryDestinationConfiguration.AddOrEditDestination(parameters)
+            Try
+                log.Debug("ExcelAddOrChangeDestination - inMemoryDestinationConfiguration.AddOrEditDestination Name=" & conRec.aName.Value)
+                inMemoryDestinationConfiguration.AddOrEditDestination(parameters)
+            Catch Exc As System.Exception
+                log.Error("ExcelAddOrChangeDestination - Exception=" & Exc.ToString)
+            End Try
         Next
     End Sub
 
     Public Function getDestinationList() As Collection
         Dim list As New Collection
         Dim availableDestinations As Dictionary(Of String, RfcConfigParameters)
+        log.Debug("getDestinationList - getting availableDestinations")
         availableDestinations = inMemoryDestinationConfiguration.getAvailableDestinations()
         Dim key As String
         For Each key In availableDestinations.Keys
             list.Add(key)
         Next
         getDestinationList = list
+        log.Debug("getDestinationList - getDestinationList.Count=" & CStr(getDestinationList.Count))
     End Function
 End Class
