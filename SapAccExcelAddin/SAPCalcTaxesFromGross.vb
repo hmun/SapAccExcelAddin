@@ -13,7 +13,7 @@ Public Class SAPCalcTaxesFromGross
 
     Sub New(aSapCon As SapCon)
         sapcon = aSapCon
-        destination = aSapCon.getDestination()
+        aSapCon.getDestination(destination)
         sapcon.checkCon()
         log.Debug("New - " & "creating Function CALCULATE_TAXES_GROSS")
         Try

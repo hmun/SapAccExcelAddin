@@ -7,17 +7,16 @@ Public Class SapCon
     Const aParamWs As String = "Parameter"
     Const aConnectionWs As String = "SAP-Con"
     Private Shared ReadOnly log As log4net.ILog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
-    Private aSapExcelDestinationConfiguration As SapExcelDestinationConfiguration
-    Private aDest As String
-    Public destination As RfcCustomDestination
-    Private connected As Boolean = False
+    Private _sapcon As SAPLogon.SAPCon
 
     Public Sub New()
-        Dim parameters As New RfcConfigParameters()
-
+        Dim conParameter As New SAPLogon.ConParameter
+        Dim aSapExcelDestination As New SapExcelDestination
         Dim aCws As Excel.Worksheet
         Dim aWB As Excel.Workbook
         aWB = Globals.SapAccAddIn.Application.ActiveWorkbook
+        Dim assemblyName As System.Reflection.AssemblyName = System.Reflection.Assembly.GetExecutingAssembly().GetName()
+        Dim assembly As String = assemblyName.Name
         Try
             aCws = aWB.Worksheets(aConnectionWs)
         Catch Exc As System.Exception
@@ -25,77 +24,80 @@ Public Class SapCon
             log.Error("New - Exception=" & Exc.ToString)
             Exit Sub
         End Try
-        aDest = aCws.Cells(2, 2).Value
-        log.Debug("New - " & "aDest=" & CStr(aDest))
         log.Debug("New - " & "setting up aSapExcelDestinationConfiguration")
-        aSapExcelDestinationConfiguration = New SapExcelDestinationConfiguration
-        aSapExcelDestinationConfiguration.ConfigAddOrChangeDestination()
-        aSapExcelDestinationConfiguration.ExcelAddOrChangeDestination(aConnectionWs)
-        aSapExcelDestinationConfiguration.SetUp()
-        log.Debug("New - " & "finished setting up aSapExcelDestinationConfiguration")
-        log.Debug("New - " & "calling setDest")
-        setDest()
-        log.Debug("New - " & "end")
+        conParameter = aSapExcelDestination.GetExcelDestinations(aConnectionWs)
+        _sapcon = New SAPLogon.SAPCon(assembly, conParameter)
+        '        _sapcon.Dest = CStr(aCws.Cells(2, 2).Value)
     End Sub
 
-    Private Function setDest()
+    Public Function getDestination(ByRef pDestination As RfcCustomDestination) As Boolean
+        getDestination = False
+        pDestination = _sapcon.Destination
+        If Not pDestination Is Nothing Then
+            getDestination = True
+        End If
+    End Function
+
+    Public Function getSapCon(ByRef pSapCon As SAPLogon.SAPCon) As Boolean
+        getSapCon = False
+        pSapCon = _sapcon
+        If Not pSapCon Is Nothing Then
+            getSapCon = True
+        End If
+    End Function
+
+    Private Sub setDest()
         Dim formRet = 0
         Dim oForm As New FormDestinations
-        Dim destCol As Collection
+        Dim destCol As System.Collections.ObjectModel.Collection(Of String)
         Dim dest As String
         log.Debug("setDest - " & "building destination list")
-        destCol = aSapExcelDestinationConfiguration.getDestinationList()
+        destCol = _sapcon.GetDestinationList()
         For Each dest In destCol
             oForm.ListBoxDest.Items.Add(dest)
         Next
         formRet = oForm.ShowDialog()
         If formRet = System.Windows.Forms.DialogResult.OK Then
-            aDest = oForm.ListBoxDest.SelectedItem.ToString
-            log.Debug("setDest - " & "selected aDest=" & aDest)
+            _sapcon.Dest = oForm.ListBoxDest.SelectedItem.ToString
+            log.Debug("setDest - " & "selected aDest=" & _sapcon.Dest)
         Else
             log.Debug("setDest - " & "no destination selected")
-            aDest = ""
+            _sapcon.Dest = ""
         End If
-    End Function
+    End Sub
 
     Public Function checkCon() As Integer
-        Dim dest As RfcDestination = Nothing
         Dim formRet = 0
-        If aDest = "" Then
+        Dim aRet As Integer
+        If _sapcon.Dest = "" Then
             setDest()
         End If
-        If destination Is Nothing Then
-            Try
-                log.Debug("checkCon - " & "getting dest from RfcDestinationManager")
-                dest = RfcDestinationManager.GetDestination(aDest)
-                log.Debug("checkCon - " & "creating destination")
-                destination = dest.CreateCustomDestination()
-                log.Debug("checkCon - " & "using destination.Name=" & destination.Name)
-            Catch Ex As System.Exception
-                MsgBox("Error reading destination " & aDest & "! Check the connection settings in the sap_connections.config file and the SAP-Con sheet",
-                       MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SapCon")
-                checkCon = 16
-                log.Error("checkCon - Exception=" & Ex.ToString)
-                Exit Function
-            End Try
+        If _sapcon.Destination Is Nothing Then
+            aRet = _sapcon.setDestination()
+            If aRet <> 0 Then
+                MsgBox("Error reading destination " & _sapcon.Dest & "! Check the connection settings in the sap_connections.config file and the SAP-Con sheet",
+                        MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SapCon")
+                checkCon = aRet
+            End If
         End If
-        If Not connected And destination.SncMode = 1 Then
+
+        If Not _sapcon.Connected And CStr(_sapcon.Destination.SncMode) = "1" Then
             Dim oForm As New FormLogon
             Dim aClient As String
             Dim aUserName As String
             Dim aPassword As String
             Dim aLanguage As String
             log.Debug("checkCon - " & "connecting using SNC destination")
-            oForm.Destination.Text = dest.Name
-            If Not destination.Client Is Nothing Then
-                oForm.Client.Text = destination.Client
+            oForm.Destination.Text = _sapcon.Dest
+            If Not _sapcon.Destination.Client Is Nothing Then
+                oForm.Client.Text = _sapcon.Destination.Client
             End If
             If My.Settings.SAP_Language IsNot Nothing And My.Settings.SAP_Language <> "" Then
                 oForm.Language.Text = My.Settings.SAP_Language
-            ElseIf Not destination.Language Is Nothing Then
-                oForm.Language.Text = destination.Language
+            ElseIf Not _sapcon.Destination.Language Is Nothing Then
+                oForm.Language.Text = _sapcon.Destination.Language
             End If
-            oForm.UserName.Text = destination.SncMyName
+            oForm.UserName.Text = _sapcon.Destination.SncMyName
             oForm.UserName.Enabled = False
             oForm.Password.Enabled = False
             formRet = oForm.ShowDialog()
@@ -105,25 +107,25 @@ Public Class SapCon
                 aPassword = oForm.Password.Text
                 aLanguage = oForm.Language.Text
                 My.Settings.SAP_Language = oForm.Language.Text
-                setCredentials_SNC(aClient, aLanguage)
+                _sapcon.Client = aClient
+                _sapcon.Language = aLanguage
             End If
-        ElseIf Not connected Then
+        ElseIf Not _sapcon.Connected Then
             Dim oForm As New FormLogon
             Dim aClient As String
             Dim aUserName As String
             Dim aPassword As String
             Dim aLanguage As String
-            Dim aRet As VariantType
             log.Debug("checkCon - " & "connecting using regular destination")
-            If Not destination.Client Is Nothing Then
-                oForm.Client.Text = destination.Client
+            If Not _sapcon.Destination.Client Is Nothing Then
+                oForm.Client.Text = _sapcon.Destination.Client
             End If
             If My.Settings.SAP_Language IsNot Nothing And My.Settings.SAP_Language <> "" Then
                 oForm.Language.Text = My.Settings.SAP_Language
-            ElseIf Not destination.Language Is Nothing Then
-                oForm.Language.Text = destination.Language
+            ElseIf Not _sapcon.destination.Language Is Nothing Then
+                oForm.Language.Text = _sapcon.Destination.Language
             End If
-            oForm.Destination.Text = dest.Name
+            oForm.Destination.Text = _sapcon.Dest
             oForm.UserName.Enabled = True
             If My.Settings.SAP_User IsNot Nothing Then
                 oForm.UserName.Text = CStr(My.Settings.SAP_User)
@@ -137,87 +139,30 @@ Public Class SapCon
                 aPassword = oForm.Password.Text
                 aLanguage = oForm.Language.Text
                 My.Settings.SAP_Language = oForm.Language.Text
-                setCredentials(aClient, aUserName, aPassword, aLanguage)
+                _sapcon.Client = aClient
+                _sapcon.Username = aUserName
+                _sapcon.Password = aPassword
+                _sapcon.Language = aLanguage
             End If
         End If
-        If connected Or formRet = System.Windows.Forms.DialogResult.OK Then
-            Try
-                log.Debug("checkCon - " & "calling destination.Ping")
-                destination.Ping()
-                connected = True
-                checkCon = 0
-            Catch ex As RfcInvalidParameterException
-                clearCredentials()
-                MsgBox("Connecting to SAP failed! " & ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SapCon")
-                connected = False
-                log.Error("checkCon - Exception=" & ex.ToString)
-                checkCon = 4
-            Catch ex As RfcBaseException
-                clearCredentials()
-                MsgBox("Connecting to SAP failed! " & ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SapCon")
-                connected = False
-                log.Error("checkCon - Exception=" & ex.ToString)
-                checkCon = 8
-            End Try
-        Else
-            log.Debug("checkCon - " & "failed to connect")
-            connected = False
-            destination = Nothing
+        Try
+            If formRet = System.Windows.Forms.DialogResult.OK Then
+                aRet = _sapcon.checkCon(True)
+            Else
+                aRet = _sapcon.checkCon(False)
+            End If
+            checkCon = aRet
+        Catch ex As RfcInvalidParameterException
+            MsgBox("Connecting to SAP failed! " & ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SapCon")
+            checkCon = 4
+        Catch ex As RfcBaseException
+            MsgBox("Connecting to SAP failed! " & ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SapCon")
             checkCon = 8
-        End If
+        End Try
     End Function
-
-    Public Sub setCredentials_SNC(aClient As String, aLanguage As String)
-        log.Debug("setCredentials_SNC - " & "setting credentials")
-        Try
-            destination.Client = aClient
-            destination.Language = aLanguage
-        Catch ex As System.Exception
-            MsgBox("setCredentials failed! " & ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SapCon")
-            log.Error("setCredentials_SNC - Exception=" & ex.ToString)
-        End Try
-    End Sub
-
-    Public Sub setCredentials(aClient As String, aUsername As String, aPassword As String, aLanguage As String)
-        log.Debug("setCredentials - " & "setting credentials")
-        Try
-            destination.Client = aClient
-            destination.User = aUsername
-            destination.Password = aPassword
-            destination.Language = aLanguage
-        Catch ex As System.Exception
-            MsgBox("setCredentials failed! " & ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SapCon")
-            log.Error("setCredentials - Exception=" & ex.ToString)
-        End Try
-    End Sub
 
     Public Sub SAPlogoff()
-        log.Debug("SAPlogoff - " & "closing connection")
-        destination = Nothing
-        If aDest IsNot Nothing And aDest <> "" Then
-            log.Debug("SAPlogoff - " & "calling aSapExcelDestinationConfiguration.TearDown, aDest=" & aDest)
-            aSapExcelDestinationConfiguration.TearDown(aDest)
-        Else
-            log.Debug("SAPlogoff - " & "calling aSapExcelDestinationConfiguration.TearDown")
-            aSapExcelDestinationConfiguration.TearDown()
-        End If
-        connected = False
+        _sapcon.SAPlogoff()
     End Sub
-
-    Public Sub clearCredentials()
-        log.Debug("clearCredentials - " & "clearing credentials")
-        Try
-            destination.User = ""
-            destination.Password = Nothing
-        Catch ex As System.Exception
-            MsgBox("clearCredentials failed! " & ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SapCon")
-            log.Error("clearCredentials - Exception=" & ex.ToString)
-        End Try
-    End Sub
-
-    Public Function getDestination() As RfcCustomDestination
-        getDestination = destination
-        log.Debug("getDestination - " & "destination=" & destination.Name)
-    End Function
 
 End Class

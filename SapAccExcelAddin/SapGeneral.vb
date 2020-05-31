@@ -7,17 +7,33 @@ Imports System.Diagnostics
 
 Public Class SapGeneral
     Const cVersion As String = "1.0.3.5"
+    Const cAssemblyName As String = "SapAccExcelAddin"
     Private Shared ReadOnly log As log4net.ILog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+    Private _version As String
+    Private _assemblyname As String
+
+    Public Sub New()
+        Try
+            Dim assembly As Assembly
+            Dim fileVersionInfo As FileVersionInfo
+            log.Debug("checkVersion - " & "reading assembly versions")
+            assembly = System.Reflection.Assembly.GetExecutingAssembly()
+            fileVersionInfo = System.Diagnostics.FileVersionInfo.GetVersionInfo(assembly.Location)
+            _version = fileVersionInfo.ProductVersion
+            Dim assemblyName As System.Reflection.AssemblyName = assembly.GetName()
+            _assemblyname = assemblyName.Name
+        Catch Exc As System.Exception
+            log.Debug("checkVersion - " & "failed to read assembly information using default")
+            _version = cVersion
+            _assemblyname = cAssemblyName
+        End Try
+    End Sub
 
     Public Function checkVersion() As Integer
         Dim aCws As Excel.Worksheet
         Dim aWB As Excel.Workbook
         Dim aFromVersion As String
         Dim aToVersion As String
-        Dim assembly As Assembly
-        Dim fileVersionInfo As FileVersionInfo
-        Dim aVersion As String
-        Dim theVersion As Version
 
         aWB = Globals.SapAccAddIn.Application.ActiveWorkbook
         Try
@@ -35,22 +51,11 @@ Public Class SapGeneral
         aToVersion = aCws.Cells(16, 2).Value
         log.Debug("checkVersion - " & "aToVersion=" & CStr(aToVersion))
 
-        Try
-            log.Debug("checkVersion - " & "reading assembly versions")
-            assembly = System.Reflection.Assembly.GetExecutingAssembly()
-            fileVersionInfo = System.Diagnostics.FileVersionInfo.GetVersionInfo(assembly.Location)
-            aVersion = fileVersionInfo.ProductVersion
-        Catch Exc As System.Exception
-            log.Debug("checkVersion - " & "failed to read assembly versions using default")
-            aVersion = cVersion
-        End Try
-        '        log.Debug("checkVersion - " & "using default version")
-        '        aVersion = cVersion
-        log.Debug("checkVersion - " & "aVersion=" & CStr(aVersion))
-        If aVersion > aToVersion Or aVersion < aFromVersion Then
+        log.Debug("checkVersion - " & "aVersion=" & CStr(_version))
+        If _version > aToVersion Or _version < aFromVersion Then
             ' try Publish Version
             log.Debug("checkVersion - " & "version invalid")
-            MsgBox("The Version of the Excel-Template is not valid for this Add-In. Please use a Template that is valid for version " & aVersion,
+            MsgBox("The Version of the Excel-Template is not valid for this Add-In. Please use a Template that is valid for version " & _version,
                    MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SapGeneral")
             checkVersion = False
             Exit Function
@@ -60,36 +65,21 @@ Public Class SapGeneral
         checkVersion = True
     End Function
 
-    Public Function checkVersionInSAP(pSapCon As SapCon) As Integer
-        Dim aSAPZ_BC_EXCEL_ADDIN_VERS_CHK As New SAPZ_BC_EXCEL_ADDIN_VERS_CHK(pSapCon)
-        Dim assembly As Assembly
-        Dim assemblyNames As String()
-        Dim aAddIn As String
-        Dim aRet As Integer
-
-        checkVersionInSAP = True
-        aAddIn = ""
+    Public Function CheckVersionInSAP(ByRef pSapCon As SapCon) As Integer
+        Dim aSapCon As Object = Nothing
+        Dim aRet As Boolean
         Try
-            log.Debug("checkVersionInSAP - " & "reading assemblyName")
-            assembly = System.Reflection.Assembly.GetExecutingAssembly()
-            assemblyNames = assembly.GetName().ToString.Split(New Char() {","c})
-            aAddIn = assemblyNames(0)
-            log.Debug("checkVersionInSAP - " & "aAddIn=" & CStr(aAddIn))
-        Catch Exc As System.Exception
-            MsgBox("Exception: " & Exc.Message,
-                   MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SapGeneral")
-            checkVersionInSAP = False
-            log.Error("checkVersionInSAP - " & "failed to read assemblyName")
-            Exit Function
+            aRet = pSapCon.getSapCon(aSapCon)
+            If aRet Then
+                Dim aSapVersion As New SAPLogon.SAPVersion(aSapCon)
+                CheckVersionInSAP = aSapVersion.CheckVersionInSAP(_assemblyname, _version)
+            Else
+                CheckVersionInSAP = False
+            End If
+        Catch ex As SystemException
+            CheckVersionInSAP = False
+            log.Warn("CheckVersionInSAP - " & ex.ToString)
         End Try
-        log.Debug("checkVersionInSAP - " & "calling aSAPZ_BC_EXCEL_ADDIN_VERS_CHK.checkVersion")
-        aRet = aSAPZ_BC_EXCEL_ADDIN_VERS_CHK.checkVersion(aAddIn, cVersion)
-        If aRet <> 0 Then
-            MsgBox("The Version " & cVersion & " of the Add-In " & aAddIn & " is not allowed in this SAP-System!",
-                   MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SapGeneral")
-            log.Debug("checkVersionInSAP - " & "The Version " & cVersion & " of the Add-In " & aAddIn & " is not allowed in this SAP-System!")
-            checkVersionInSAP = False
-        End If
     End Function
 
 End Class

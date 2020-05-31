@@ -58,6 +58,10 @@ Public Class SAPDocItem
     Public SALES_ORD As String
     Public S_ORD_ITEM As String
     Public PARTNER_BK As String
+    Public TaxAmount As Double
+    Public ZZBBKNG As String
+    Public ZZBBTCO As String
+    Public GL_ACCOUNT As String 'alternate reconciliation account for Vendor/Customer
 
     Public Function create(pACCTYPE As String, pNEWKO As String, pBetrag As Double, pMWSKZ As String, pSGTXT As String,
                        pAUFNR As String, pMATNR As String, pWERKS As String, pKOSTL As String,
@@ -74,7 +78,9 @@ Public Class SAPDocItem
                        pPART_PRCTR As String, pZZETXT As String, pZZHFMC1 As String, pZZHFMC3 As String, pMTART As String,
                        pREF_KEY_3 As String, pPMNT_BLOCK As String, pSP_GL_IND As String,
                        pTXJCD As String, pZZDIM06 As String, pZZDIM07 As String, pBUPLA As String,
-                       pSALES_ORD As String, pS_ORD_ITEM As String, pPARTNER_BK As String) As SAPDocItem
+                       pSALES_ORD As String, pS_ORD_ITEM As String, pPARTNER_BK As String,
+                       Optional pTaxAmount As Double = 0, Optional pZZBBKNG As String = "", Optional pZZBBTCO As String = "",
+                       Optional pGL_ACCOUNT As String = "") As SAPDocItem
         Dim aSAPDocItem As New SAPDocItem
         aSAPDocItem.ACCTYPE = pACCTYPE
         aSAPDocItem.NEWKO = pNEWKO
@@ -131,7 +137,16 @@ Public Class SAPDocItem
         aSAPDocItem.SALES_ORD = pSALES_ORD
         aSAPDocItem.S_ORD_ITEM = pS_ORD_ITEM
         aSAPDocItem.PARTNER_BK = pPARTNER_BK
-
+        aSAPDocItem.TaxAmount = pTaxAmount
+        If pZZBBKNG <> "" Then
+            aSAPDocItem.ZZBBKNG = pZZBBKNG.ToUpper()
+        End If
+        If pZZBBTCO <> "" Then
+            aSAPDocItem.ZZBBTCO = pZZBBTCO.ToUpper()
+        End If
+        If pGL_ACCOUNT <> "" Then
+            aSAPDocItem.GL_ACCOUNT = pGL_ACCOUNT
+        End If
         create = aSAPDocItem
     End Function
 

@@ -46,16 +46,16 @@
         Me.Accounting = Me.Factory.CreateRibbonGroup
         Me.ButtonCheckAccDoc = Me.Factory.CreateRibbonButton
         Me.ButtonPostAccDoc = Me.Factory.CreateRibbonButton
-        Me.Logon = Me.Factory.CreateRibbonGroup
-        Me.ButtonLogon = Me.Factory.CreateRibbonButton
-        Me.ButtonLogoff = Me.Factory.CreateRibbonButton
         Me.Invoice = Me.Factory.CreateRibbonGroup
         Me.ButtonReadInvoices = Me.Factory.CreateRibbonButton
         Me.ButtonGenGLData = Me.Factory.CreateRibbonButton
+        Me.Logon = Me.Factory.CreateRibbonGroup
+        Me.ButtonLogon = Me.Factory.CreateRibbonButton
+        Me.ButtonLogoff = Me.Factory.CreateRibbonButton
         Me.SapAcc.SuspendLayout()
         Me.Accounting.SuspendLayout()
-        Me.Logon.SuspendLayout()
         Me.Invoice.SuspendLayout()
+        Me.Logon.SuspendLayout()
         Me.SuspendLayout()
         '
         'SapAcc
@@ -87,6 +87,29 @@
         Me.ButtonPostAccDoc.Name = "ButtonPostAccDoc"
         Me.ButtonPostAccDoc.ShowImage = True
         '
+        'Invoice
+        '
+        Me.Invoice.Items.Add(Me.ButtonReadInvoices)
+        Me.Invoice.Items.Add(Me.ButtonGenGLData)
+        Me.Invoice.Label = "Invoice"
+        Me.Invoice.Name = "Invoice"
+        '
+        'ButtonReadInvoices
+        '
+        Me.ButtonReadInvoices.Image = CType(resources.GetObject("ButtonReadInvoices.Image"), System.Drawing.Image)
+        Me.ButtonReadInvoices.Label = "Read Invoices"
+        Me.ButtonReadInvoices.Name = "ButtonReadInvoices"
+        Me.ButtonReadInvoices.ScreenTip = "Read the Invoice data"
+        Me.ButtonReadInvoices.ShowImage = True
+        '
+        'ButtonGenGLData
+        '
+        Me.ButtonGenGLData.Image = CType(resources.GetObject("ButtonGenGLData.Image"), System.Drawing.Image)
+        Me.ButtonGenGLData.Label = "Generate GL-Data"
+        Me.ButtonGenGLData.Name = "ButtonGenGLData"
+        Me.ButtonGenGLData.ScreenTip = "Generate the GL Posting Data"
+        Me.ButtonGenGLData.ShowImage = True
+        '
         'Logon
         '
         Me.Logon.Items.Add(Me.ButtonLogon)
@@ -108,25 +131,6 @@
         Me.ButtonLogoff.Name = "ButtonLogoff"
         Me.ButtonLogoff.ShowImage = True
         '
-        'Invoice
-        '
-        Me.Invoice.Items.Add(Me.ButtonReadInvoices)
-        Me.Invoice.Items.Add(Me.ButtonGenGLData)
-        Me.Invoice.Label = "Invoice"
-        Me.Invoice.Name = "Invoice"
-        '
-        'ButtonReadInvoices
-        '
-        Me.ButtonReadInvoices.Label = "Read Invoices"
-        Me.ButtonReadInvoices.Name = "ButtonReadInvoices"
-        Me.ButtonReadInvoices.ScreenTip = "Read the Invoice data"
-        '
-        'ButtonGenGLData
-        '
-        Me.ButtonGenGLData.Label = "Generate GL-Data"
-        Me.ButtonGenGLData.Name = "ButtonGenGLData"
-        Me.ButtonGenGLData.ScreenTip = "Generate the GL Posting Data"
-        '
         'SapAccRibbon
         '
         Me.Name = "SapAccRibbon"
@@ -136,10 +140,10 @@
         Me.SapAcc.PerformLayout()
         Me.Accounting.ResumeLayout(False)
         Me.Accounting.PerformLayout()
-        Me.Logon.ResumeLayout(False)
-        Me.Logon.PerformLayout()
         Me.Invoice.ResumeLayout(False)
         Me.Invoice.PerformLayout()
+        Me.Logon.ResumeLayout(False)
+        Me.Logon.PerformLayout()
         Me.ResumeLayout(False)
 
     End Sub

@@ -13,7 +13,7 @@ Public Class SAPWbsElement
 
     Sub New(aSapCon As SapCon)
         sapcon = aSapCon
-        destination = aSapCon.getDestination()
+        aSapCon.getDestination(destination)
         log.Debug("New - " & "creating Function Z_CO_PS_PSP_INTERNAL")
         Try
             oRfcFunction = destination.Repository.CreateFunction("Z_CO_PS_PSP_INTERNAL")

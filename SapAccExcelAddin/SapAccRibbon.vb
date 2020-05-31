@@ -3,7 +3,6 @@
 ' For a human readable version of the license, see https://creativecommons.org/licenses/by/4.0/
 
 Imports Microsoft.Office.Tools.Ribbon
-Imports SAP.Middleware.Connector
 Imports System.Configuration
 Imports System.Collections.Specialized
 
@@ -14,6 +13,8 @@ Public Class SapAccRibbon
     Const CP = 48 'column of post indicator
     Const CD = 49 'column of first header value
     Const CM = 58 'column of return message
+
+    Const ColNew = 27 ' column of the new accounting objects for invoice reposting
 
     Private Sub ButtonCheckAccDoc_Click(sender As Object, e As RibbonControlEventArgs) Handles ButtonCheckAccDoc.Click
         Dim aSapConRet As Integer
@@ -30,7 +31,11 @@ Public Class SapAccRibbon
         aSapConRet = aSapCon.checkCon()
         If aSapConRet = 0 Then
             log.Debug("ButtonCheckAccDoc_Click - " & "checking version in SAP")
-            aSapVersionRet = aSapGeneral.checkVersionInSAP(aSapCon)
+            Try
+                aSapVersionRet = aSapGeneral.checkVersionInSAP(aSapCon)
+            Catch ex As SystemException
+                log.Warn("ButtonPostAccDoc_Click-checkVersionInSAP - )" & ex.ToString)
+            End Try
             log.Debug("ButtonPostAccDoc_Click - " & "aSapVersionRet=" & CStr(aSapVersionRet))
             If aSapVersionRet = True Then
                 log.Debug("ButtonCheckAccDoc_Click - " & "calling SAP_AccDoc_execute")
@@ -44,6 +49,7 @@ Public Class SapAccRibbon
     Private Sub ButtonPostAccDoc_Click(sender As Object, e As RibbonControlEventArgs) Handles ButtonPostAccDoc.Click
         Dim aSapConRet As Integer
         Dim aSapVersionRet As Integer
+
         log.Debug("ButtonPostAccDoc_Click - " & "checking Version")
         If Not aSapGeneral.checkVersion() Then
             Exit Sub
@@ -56,7 +62,11 @@ Public Class SapAccRibbon
         aSapConRet = aSapCon.checkCon()
         If aSapConRet = 0 Then
             log.Debug("ButtonPostAccDoc_Click - " & "checking version in SAP")
-            aSapVersionRet = aSapGeneral.checkVersionInSAP(aSapCon)
+            Try
+                aSapVersionRet = aSapGeneral.checkVersionInSAP(aSapCon)
+            Catch ex As SystemException
+                log.Warn("ButtonPostAccDoc_Click-checkVersionInSAP - )" & ex.ToString)
+            End Try
             log.Debug("ButtonPostAccDoc_Click - " & "aSapVersionRet=" & CStr(aSapVersionRet))
             If aSapVersionRet = True Then
                 log.Debug("ButtonPostAccDoc_Click - " & "calling SAP_AccDoc_execute")
@@ -156,9 +166,15 @@ Public Class SapAccRibbon
         Dim aBKTXT As String
         Dim aACC_PRINCIPLE As String
         Dim aFIS_PERIOD As Integer
+        Dim aTRANS_DATE As Date?
 
         Dim aKONTO As String
         Dim aBETRA As Double
+        Dim aTaxAmountTest As String
+        Dim aTaxAmount As Double
+        Dim aZZBBKNG As String
+        Dim aZZBBTCO As String
+        Dim aGL_ACCOUNT As String
 
         Dim aSGTXT As String
         Dim aMWSKZ As String
@@ -170,6 +186,7 @@ Public Class SapAccRibbon
         Dim aAUFNR As String
 
         Dim aFKBERNAME As String
+        Dim aTransdateOffset As Integer? = Nothing
 
         Dim aDws As Excel.Worksheet
         Dim aPws As Excel.Worksheet
@@ -208,6 +225,12 @@ Public Class SapAccRibbon
         If CStr(aFKBERNAME) = "" Then
             aFKBERNAME = "FKBER"
         End If
+        If CStr(aPws.Cells(19, 2).Value) <> "" Then
+            Try
+                aTransdateOffset = CInt(aPws.Cells(19, 2).Value)
+            Catch
+            End Try
+        End If
         ' Check Authority
         log.Debug("SAP_AccDoc_execute - " & "creating aSAPZFI_CHECK_F_BKPF_BUK")
         Dim aSAPZFI_CHECK_F_BKPF_BUK As New SAPZFI_CHECK_F_BKPF_BUK(aSapCon)
@@ -240,11 +263,21 @@ Public Class SapAccRibbon
                 aSGTXT = CStr(aDws.Cells(i, 38).Value)
                 aMWSKZ = CStr(aDws.Cells(i, 39).Value)
                 aBETRA = CDbl(aDws.Cells(i, 42).Value)
+                aTaxAmountTest = CStr(aDws.Cells(i, CM + 3).Value)
+                aTaxAmount = 0
+                If aTaxAmountTest <> "" Then
+                    If IsNumeric(aTaxAmountTest) Then
+                        aTaxAmount = CDbl(aTaxAmountTest)
+                    End If
+                End If
+                aZZBBKNG = CStr(aDws.Cells(i, CM + 4).Value)
+                aZZBBTCO = CStr(aDws.Cells(i, CM + 5).Value)
+                aGL_ACCOUNT = CStr(aDws.Cells(i, CM + 6).Value)
 
                 aSAPDocItem = aSAPDocItem.create(CStr(aDws.Cells(i, 1).Value), aKONTO, aBETRA, aMWSKZ, aSGTXT, aAUFNR, aMATNR, aWERKS, aKOSTL, aLIFNR,
                                             CStr(aDws.Cells(i, 14).Value), CStr(aDws.Cells(i, 15).Value), CStr(aDws.Cells(i, 16).Value), CStr(aDws.Cells(i, 17).Value),
                                             CStr(aDws.Cells(i, 18).Value), CStr(aDws.Cells(i, 19).Value), CStr(aDws.Cells(i, 21).Value),
-                                            CStr(aDws.Cells(i, 30).Value), CStr(aDws.Cells(i, 34).Value), CStr(aDws.Cells(i, 41).Value),
+                                            CStr(aDws.Cells(i, 33).Value), CStr(aDws.Cells(i, 34).Value), CStr(aDws.Cells(i, 41).Value),
                                             CDbl(aDws.Cells(i, 43).Value), aCURRTYP2, aWAERS2,
                                             CDbl(aDws.Cells(i, 44).Value), aCURRTYP3, aWAERS3,
                                             CDbl(aDws.Cells(i, 45).Value), aCURRTYP4, aWAERS4,
@@ -254,7 +287,8 @@ Public Class SapAccRibbon
                                             CStr(aDws.Cells(i, 22).Value), CStr(aDws.Cells(i, 27).Value), CStr(aDws.Cells(i, 28).Value), CStr(aDws.Cells(i, 29).Value), CStr(aDws.Cells(i, 20).Value),
                                             CStr(aDws.Cells(i, 47).Value), CStr(aDws.Cells(i, 35).Value), CStr(aDws.Cells(i, 36).Value),
                                             CStr(aDws.Cells(i, 40).Value), CStr(aDws.Cells(i, 30).Value), CStr(aDws.Cells(i, 31).Value), CStr(aDws.Cells(i, 32).Value),
-                                            CStr(aDws.Cells(i, 12).Value), CStr(aDws.Cells(i, 13).Value), CStr(aDws.Cells(i, 37).Value))
+                                            CStr(aDws.Cells(i, 12).Value), CStr(aDws.Cells(i, 13).Value), CStr(aDws.Cells(i, 37).Value),
+                                            aTaxAmount, aZZBBKNG, aZZBBTCO, aGL_ACCOUNT)
                 aData.Add(aSAPDocItem)
                 If (aDws.Cells(i, CP).Value = "X" Or aDws.Cells(i, CP).Value = "x") Then
                     log.Debug("SAP_AccDoc_execute - " & "found posting indicator, aData.Count=" & CStr(aData.Count))
@@ -268,6 +302,17 @@ Public Class SapAccRibbon
                             aBLDAT = CDate(aDws.Cells(i, CD + 1).Value)
                         Else
                             aBLDAT = adBLDAT
+                        End If
+                        If Not aTransdateOffset Is Nothing Then
+                            If CStr(aDws.Cells(i, CD + aTransdateOffset).Value) <> "" Then
+                                Try
+                                    aTRANS_DATE = CDate(aDws.Cells(i, CD + aTransdateOffset).Value)
+                                Catch
+                                    aTRANS_DATE = Nothing
+                                End Try
+                            Else
+                                aTRANS_DATE = Nothing
+                            End If
                         End If
                         If CStr(aDws.Cells(i, CD + 2).Value) <> "" Then
                             aXBLNR = CStr(aDws.Cells(i, CD + 2).Value)
@@ -313,7 +358,7 @@ Public Class SapAccRibbon
                                 aDws.Cells(i, CM) = "User not authorized for company code " & aBUKRS
                             Else
                                 log.Debug("SAP_AccDoc_execute - " & "calling aSAPAcctngDocument.post, pTest=" & CStr(pTest))
-                                aRetStr = aSAPAcctngDocument.post(aBLDAT, aBLART, aBUKRS, aBUDAT, aWAERS, aXBLNR, aBKTXT, aFIS_PERIOD, aACC_PRINCIPLE, aData, pTest, aFKBERNAME)
+                                aRetStr = aSAPAcctngDocument.post(aBLDAT, aBLART, aBUKRS, aBUDAT, aWAERS, aXBLNR, aBKTXT, aFIS_PERIOD, aACC_PRINCIPLE, aData, pTest, aFKBERNAME, aTRANS_DATE)
                                 log.Debug("SAP_AccDoc_execute - " & "aSAPAcctngDocument.post returned, aRetStr=" & aRetStr)
                                 aDws.Cells(i, CM) = CStr(aRetStr)
                                 aDws.Cells(i, CM + 1) = CStr(ExtractDocNumberFromMessage(aRetStr))
@@ -332,6 +377,9 @@ Public Class SapAccRibbon
             Globals.SapAccAddIn.Application.ScreenUpdating = True
             Globals.SapAccAddIn.Application.Cursor = Microsoft.Office.Interop.Excel.XlMousePointer.xlDefault
         Catch ex As System.Exception
+            Globals.SapAccAddIn.Application.EnableEvents = True
+            Globals.SapAccAddIn.Application.ScreenUpdating = True
+            Globals.SapAccAddIn.Application.Cursor = Microsoft.Office.Interop.Excel.XlMousePointer.xlDefault
             MsgBox("SAP_AccDoc_execute failed! " & ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "Sap Accounting")
             log.Error("SAP_AccDoc_execute - " & "Exception=" & ex.ToString)
             Exit Sub
@@ -350,5 +398,273 @@ Public Class SapAccRibbon
             ExtractDocNumberFromMessage = ""
         End If
     End Function
+
+    Private Sub ButtonReadInvoices_Click(sender As Object, e As RibbonControlEventArgs) Handles ButtonReadInvoices.Click
+        Dim aSapConRet As Integer
+        Dim aSapVersionRet As Integer
+
+        log.Debug("ButtonReadInvoices_Click - " & "checking Version")
+        If Not aSapGeneral.checkVersion() Then
+            Exit Sub
+        End If
+        log.Debug("ButtonReadInvoices_Click - " & "checking Connection")
+        aSapConRet = 0
+        If aSapCon Is Nothing Then
+            aSapCon = New SapCon()
+        End If
+        aSapConRet = aSapCon.checkCon()
+        If aSapConRet = 0 Then
+            log.Debug("ButtonReadInvoices_Click - " & "checking version in SAP")
+            Try
+                aSapVersionRet = aSapGeneral.checkVersionInSAP(aSapCon)
+            Catch ex As SystemException
+                log.Warn("ButtonReadInvoices_Click-checkVersionInSAP - )" & ex.ToString)
+            End Try
+            log.Debug("ButtonReadInvoices_Click - " & "aSapVersionRet=" & CStr(aSapVersionRet))
+            If aSapVersionRet = True Then
+                log.Debug("ButtonReadInvoices_Click - " & "calling ReadInvoices_exec")
+                ReadInvoices_exec()
+            End If
+        Else
+            log.Debug("ButtonReadInvoices_Click - " & "connection check failed")
+            aSapCon = Nothing
+        End If
+    End Sub
+
+    Sub ReadInvoices_exec()
+        Dim aSAPIncomingInvoice As SAPIncomingInvoice
+        Try
+            aSAPIncomingInvoice = New SAPIncomingInvoice(aSapCon)
+        Catch Exc As System.Exception
+            log.Warn("ButtonReadInvoices_Click - " & Exc.ToString)
+            Exit Sub
+        End Try
+        Dim aSAPFormat As New SAPFormat
+        Dim aILWS As Excel.Worksheet
+        Dim aIDWS As Excel.Worksheet
+        Dim aWB As Excel.Workbook
+        Dim i As Integer
+        log.Debug("ButtonReadInvoices_Click - " & "InvoiceList Sheet")
+        aWB = Globals.SapAccAddIn.Application.ActiveWorkbook
+        Try
+            aILWS = aWB.Worksheets("InvoiceList")
+            aILWS.Activate()
+        Catch Exc As System.Exception
+            log.Warn("ButtonReadInvoices_Click - " & "No InvoiceList Sheet in current workbook.")
+            MsgBox("No InvoiceList Sheet in current workbook. Check if the current workbook is a valid SAP Invoice Reposting Template",
+                   MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "Sap Accounting")
+            Exit Sub
+        End Try
+        log.Debug("ButtonReadInvoices_Click - " & "InvoiceData Sheet")
+        Try
+            aIDWS = aWB.Worksheets("InvoiceData")
+        Catch Exc As System.Exception
+            log.Warn("ButtonReadInvoices_Click - " & "No InvoiceData Sheet in current workbook.")
+            MsgBox("No InvoiceData Sheet in current workbook. Check if the current workbook is a valid SAP Invoice Reposting Template",
+                   MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "Sap Accounting")
+            Exit Sub
+        End Try
+        Try
+            Globals.SapAccAddIn.Application.Cursor = Microsoft.Office.Interop.Excel.XlMousePointer.xlWait
+            Globals.SapAccAddIn.Application.EnableEvents = False
+            Globals.SapAccAddIn.Application.ScreenUpdating = False
+            log.Debug("ButtonReadInvoices_Click - " & "processing data - disabling events, screen update, cursor")
+            ' clear the InvoiceData
+            Dim aRange As Excel.Range
+            If CStr(aIDWS.Cells(2, 1).Value) <> "" Then
+                aRange = aIDWS.Range("A2")
+                i = 2
+                Do
+                    i += 1
+                Loop While CStr(aIDWS.Cells(i, 1).Value) <> ""
+                aRange = aIDWS.Range(aRange, aIDWS.Cells(i, 1))
+                aRange.EntireRow.Delete()
+            End If
+            ' read the invoices
+            Dim IDCol As New Collection
+            Dim IDColTmp As New Dictionary(Of String, BInvRec)
+            Dim iL As Integer = 2
+            Do
+                IDColTmp = New Dictionary(Of String, BInvRec)
+                IDColTmp = aSAPIncomingInvoice.getDetail(aSAPFormat.unpack(aILWS.Cells(iL, 2).value, 10), CStr(aILWS.Cells(iL, 1).value))
+                If Not IDColTmp Is Nothing Then
+                    For Each aBInvRec In IDColTmp.Values
+                        IDCol.Add(aBInvRec)
+                    Next
+                End If
+                iL += 1
+            Loop While CStr(aILWS.Cells(iL, 1).Value) <> ""
+            ' write the invoice data
+
+            Dim iA As Integer = 2
+            Dim aCells As Excel.Range
+            For Each aBInvRec In IDCol
+                If aBInvRec.aSERIAL_NO.Value <> "" Then
+                    Dim aRetArray As Object = aBInvRec.toStringValue()
+                    aCells = aIDWS.Range(aIDWS.Cells(iA, 1), aIDWS.Cells(iA, aRetArray.Length - 1))
+                    aCells.Value = aRetArray
+                    '    aIDWS.Cells(iA, 10).Value = CDbl(aBInvRec.aEXCH_RATE.Value)
+                    aIDWS.Cells(iA, 5).Value = CDate(aBInvRec.aDOC_DATE.Value)
+                    aIDWS.Cells(iA, 6).Value = CDate(aBInvRec.aPSTNG_DATE.Value)
+                    If CStr(aBInvRec.aITEM_AMOUNT.Value) = "" Then
+                        aIDWS.Cells(iA, 18).Value = ""
+                    Else
+                        aIDWS.Cells(iA, 18).Value = CDbl(aBInvRec.aITEM_AMOUNT.Value)
+                    End If
+                    If CStr(aBInvRec.aQUANTITY.Value) = "" Then
+                        aIDWS.Cells(iA, 19).Value = ""
+                    Else
+                        aIDWS.Cells(iA, 19).Value = CDbl(aBInvRec.aQUANTITY.Value)
+                    End If
+                    iA += 1
+                End If
+            Next
+            Globals.SapAccAddIn.Application.EnableEvents = True
+            Globals.SapAccAddIn.Application.ScreenUpdating = True
+            Globals.SapAccAddIn.Application.Cursor = Microsoft.Office.Interop.Excel.XlMousePointer.xlDefault
+            aIDWS.Activate()
+        Catch ex As System.Exception
+            Globals.SapAccAddIn.Application.EnableEvents = True
+            Globals.SapAccAddIn.Application.ScreenUpdating = True
+            Globals.SapAccAddIn.Application.Cursor = Microsoft.Office.Interop.Excel.XlMousePointer.xlDefault
+            MsgBox("ButtonReadInvoices_Click failed! " & ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "Sap Accounting")
+            log.Error("ButtonReadInvoices_Click - " & "Exception=" & ex.ToString)
+            Exit Sub
+        End Try
+
+    End Sub
+
+    Private Sub ButtonGenGLData_Click(sender As Object, e As RibbonControlEventArgs) Handles ButtonGenGLData.Click
+        Dim aMigHelper As MigHelper
+        Dim aBasis As New Collection
+        Dim aBasisLine As New Dictionary(Of String, SAPCommon.TField)
+        Dim aPostingLine As New Dictionary(Of String, SAPCommon.TField)
+        Dim aContraLine As New Dictionary(Of String, SAPCommon.TField)
+        Dim aPostingLines As Collection
+        Dim aPWs As Excel.Worksheet
+        Dim aIWs As Excel.Worksheet
+        Dim aDWs As Excel.Worksheet
+        Dim aWB As Excel.Workbook
+        Dim aUselocal As Boolean = False
+        Dim aUseBasis As Boolean = False
+        Dim i As Integer
+
+        log.Debug("ButtonGenGLData_Click - " & "Invoice Sheet")
+        aWB = Globals.SapAccAddIn.Application.ActiveWorkbook
+        Try
+            aPws = aWB.Worksheets("Parameter")
+            If CStr(aPWs.Cells(17, 2).Value) = "X" Then
+                aUselocal = True
+            End If
+        Catch Exc As System.Exception
+            log.Debug("ButtonGenGLData_Click - " & "No Parameter Sheet in current workbook. -> aDoGeneral = True")
+        End Try
+        Try
+            aIWs = aWB.Worksheets("InvoiceData")
+        Catch Ex As System.Exception
+            Try
+                aIWs = aWB.Worksheets("Basis")
+                aUseBasis = True
+            Catch Exc As System.Exception
+                log.Warn("ButtonGenGLData_Click - " & "No InvoiceData or Basis Sheet in current workbook.")
+                MsgBox("No InvoiceData Sheet or Basis Sheet in current workbook. Check if the current workbook is a valid Template",
+                   MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "Sap Accounting")
+                Exit Sub
+            End Try
+        End Try
+        aIWs.Activate()
+        If aUselocal Then
+            aMigHelper = New MigHelper(uselocal:=True)
+        Else
+            aMigHelper = New MigHelper(uselocal:=False)
+        End If
+        ' process the data
+        Try
+            log.Debug("ButtonGenGLData_Click - " & "processing data - disabling events, screen update, cursor")
+            Globals.SapAccAddIn.Application.Cursor = Microsoft.Office.Interop.Excel.XlMousePointer.xlWait
+            Globals.SapAccAddIn.Application.EnableEvents = False
+            Globals.SapAccAddIn.Application.ScreenUpdating = False
+            ' read the invoice reposting lines
+            i = 2
+            Do
+                If aUseBasis _
+                    Or CStr(aIWs.Cells(i, ColNew).value) <> "" Or CStr(aIWs.Cells(i, ColNew + 1).value) <> "" Or CStr(aIWs.Cells(i, ColNew + 2).value) <> "" _
+                    Or CStr(aIWs.Cells(i, ColNew + 3).value) <> "" Or CStr(aIWs.Cells(i, ColNew + 4).value) <> "" Or CStr(aIWs.Cells(i, ColNew + 5).value) <> "" Then
+                    aBasisLine = aMigHelper.makeDictForRules(aIWs, i, 1, 1, 100)
+                    aBasis.Add(aBasisLine)
+                End If
+                i = i + 1
+            Loop While CStr(aIWs.Cells(i, 1).value) <> ""
+            ' create the posting lines
+            aPostingLines = New Collection
+            For Each aBasisLine In aBasis
+                aPostingLine = aMigHelper.mig.ApplyRules(aBasisLine, "P")
+                aPostingLines.Add(aPostingLine)
+                aContraLine = aMigHelper.mig.ApplyRules(aBasisLine, "C")
+                ' some hard-coding here
+                If aContraLine("Amount").Value <> "" Then
+                    aContraLine("Amount").Value = CStr(CDbl(aContraLine("Amount").Value) * -1)
+                Else
+                    aContraLine("Amount").Value = ""
+                End If
+                aPostingLines.Add(aContraLine)
+            Next
+            'output the posting lines
+            Try
+                aDWs = aWB.Worksheets("SAP-Acc-Data")
+            Catch Exc As System.Exception
+                Globals.SapAccAddIn.Application.EnableEvents = True
+                Globals.SapAccAddIn.Application.ScreenUpdating = True
+                Globals.SapAccAddIn.Application.Cursor = Microsoft.Office.Interop.Excel.XlMousePointer.xlDefault
+                MsgBox("No SAP-Acc-Data Sheet in current workbook. Check if the current workbook is a valid SAP Accounting Template",
+                   MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "Sap Accounting")
+                Exit Sub
+            End Try
+            Dim aRange As Excel.Range
+            If CStr(aDWs.Cells(2, 1).Value) <> "" Then
+                aRange = aDWs.Range("A2")
+                i = 2
+                Do
+                    i += 1
+                Loop While CStr(aDWs.Cells(i, 1).Value) <> ""
+                aRange = aDWs.Range(aRange, aDWs.Cells(i, 1))
+                aRange.EntireRow.Delete()
+            End If
+            Dim aKey As String
+            Dim aValue As String
+            i = 2
+            For Each aPostingLine In aPostingLines
+                For j = 1 To CM + 10
+                    If CStr(aDWs.Cells(1, j).Value) <> "" Then
+                        aKey = CStr(aDWs.Cells(1, j).Value)
+                        If aPostingLine.ContainsKey(aKey) Then
+                            aValue = aPostingLine(aKey).Value
+                            If aKey = "Amount" And aValue <> "" Then
+                                aDWs.Cells(i, j).Value = CDbl(aValue)
+                            ElseIf aPostingLine(aKey).FType = "F" Then
+                                aDWs.Cells(i, j).FormulaR1C1 = "=" & CStr(aValue)
+                            Else
+                                aDWs.Cells(i, j).Value = aValue
+                            End If
+                        End If
+                    End If
+                Next j
+                i += 1
+            Next
+            Globals.SapAccAddIn.Application.EnableEvents = True
+            Globals.SapAccAddIn.Application.ScreenUpdating = True
+            Globals.SapAccAddIn.Application.Cursor = Microsoft.Office.Interop.Excel.XlMousePointer.xlDefault
+            aDWs.Activate()
+        Catch ex As System.Exception
+            Globals.SapAccAddIn.Application.EnableEvents = True
+            Globals.SapAccAddIn.Application.ScreenUpdating = True
+            Globals.SapAccAddIn.Application.Cursor = Microsoft.Office.Interop.Excel.XlMousePointer.xlDefault
+            MsgBox("ButtonGenGLData_Click failed! " & ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "Sap Accounting")
+            log.Error("ButtonGenGLData_Click - " & "Exception=" & ex.ToString)
+            Exit Sub
+        End Try
+
+        '        aMigHelper.saveToConfig()
+    End Sub
 
 End Class

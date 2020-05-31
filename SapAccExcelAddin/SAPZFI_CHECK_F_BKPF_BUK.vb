@@ -11,9 +11,9 @@ Public Class SAPZFI_CHECK_F_BKPF_BUK
     Private destination As RfcCustomDestination
     Private sapcon As SapCon
 
-    Sub New(aSapCon As SapCon)
+    Sub New(ByRef aSapCon As SapCon)
         sapcon = aSapCon
-        destination = aSapCon.getDestination()
+        aSapCon.getDestination(destination)
         log.Debug("New - " & "creating Function ZFI_CHECK_F_BKPF_BUK")
         Try
             oRfcFunction = destination.Repository.CreateFunction("ZFI_CHECK_F_BKPF_BUK")

@@ -13,7 +13,7 @@ Public Class SAPBapiTranctionCommit
 
     Sub New(aSapCon As SapCon)
         sapcon = aSapCon
-        destination = aSapCon.getDestination()
+        aSapCon.getDestination(destination)
         log.Debug("New - " & "creating Function BAPI_TRANSACTION_COMMIT")
         Try
             oRfcFunction = destination.Repository.CreateFunction("BAPI_TRANSACTION_COMMIT")
