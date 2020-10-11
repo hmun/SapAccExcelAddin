@@ -50,4 +50,35 @@ Public Class SAPCalcTaxesFromGross
         End Try
     End Function
 
+    Public Function getTaxCondKey(pBUKRS As String, pMWSKZ As String, pWAERS As String, pBUDAT As Date,
+                                  pWRBTR As Double, Optional ByVal pTXJCD As String = "") As String
+        getTaxCondKey = ""
+        Try
+            log.Debug("getTaxCondKey - " & "Getting Function parameters")
+            Dim oTAX_ITEM_IN As IRfcTable = oRfcFunction.GetTable("TAX_ITEM_IN")
+            Dim oTAX_ITEM_OUT As IRfcTable = oRfcFunction.GetTable("TAX_ITEM_OUT")
+            oTAX_ITEM_IN.Clear()
+            oTAX_ITEM_OUT.Clear()
+
+            oTAX_ITEM_IN.Append()
+            oTAX_ITEM_IN.SetValue("BUKRS", pBUKRS)
+            oTAX_ITEM_IN.SetValue("MWSKZ", pMWSKZ)
+            oTAX_ITEM_IN.SetValue("TXJCD", pTXJCD)
+            oTAX_ITEM_IN.SetValue("WAERS", pWAERS)
+            oTAX_ITEM_IN.SetValue("BUDAT", pBUDAT)
+            oTAX_ITEM_IN.SetValue("WRBTR", Format$(pWRBTR, "0.00"))
+            log.Debug("getTaxAmount - " & "invoking " & oRfcFunction.Metadata.Name)
+            oRfcFunction.Invoke(destination)
+            For i As Integer = 0 To oTAX_ITEM_OUT(i).Count - 1
+                If pMWSKZ = oTAX_ITEM_OUT(i).GetValue("MWSKZ") And pTXJCD = oTAX_ITEM_OUT(i).GetValue("TXJCD") Then
+                    getTaxCondKey = oTAX_ITEM_OUT(i).GetValue("KSCHL")
+                    Exit Function
+                End If
+            Next i
+        Catch ex As Exception
+            MsgBox("Exception in getTaxCondKey! " & ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SAPCalcTaxesFromGross")
+            log.Error("getTaxCondKey - Exception=" & ex.ToString)
+        End Try
+    End Function
+
 End Class

@@ -6,7 +6,7 @@ Imports System.Reflection
 Imports System.Diagnostics
 
 Public Class SapGeneral
-    Const cVersion As String = "1.0.3.5"
+    Const cVersion As String = "1.0.4.0"
     Const cAssemblyName As String = "SapAccExcelAddin"
     Private Shared ReadOnly log As log4net.ILog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     Private _version As String

@@ -36,7 +36,7 @@
     <PublishUrl>T:\hmun\VbaGit_64\SapAccExcelAddin\x64\</PublishUrl>
     <InstallUrl />
     <TargetCulture>en</TargetCulture>
-    <ApplicationVersion>1.0.3.8</ApplicationVersion>
+    <ApplicationVersion>1.0.4.0</ApplicationVersion>
     <AutoIncrementApplicationRevision>false</AutoIncrementApplicationRevision>
     <UpdateEnabled>true</UpdateEnabled>
     <UpdateInterval>7</UpdateInterval>
@@ -271,6 +271,9 @@
     <Compile Include="SAPIncomingInvoice.vb" />
     <Compile Include="SAPWbsElement.vb" />
     <Compile Include="SAPZFI_CHECK_F_BKPF_BUK.vb" />
+    <Compile Include="TData.vb" />
+    <Compile Include="TDataRec.vb" />
+    <Compile Include="TSAP_DocData.vb" />
     <EmbeddedResource Include="FormDestinations.resx">
       <DependentUpon>FormDestinations.vb</DependentUpon>
     </EmbeddedResource>

@@ -9,6 +9,8 @@ Imports System.Collections.Specialized
 Public Class SapAccRibbon
     Private aSapCon
     Private aSapGeneral
+    Private aAccPar As SAPCommon.TStr
+    Private aIntPar As SAPCommon.TStr
     Private Shared ReadOnly log As log4net.ILog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     Const CP = 48 'column of post indicator
     Const CD = 49 'column of first header value
@@ -39,7 +41,7 @@ Public Class SapAccRibbon
             log.Debug("ButtonPostAccDoc_Click - " & "aSapVersionRet=" & CStr(aSapVersionRet))
             If aSapVersionRet = True Then
                 log.Debug("ButtonCheckAccDoc_Click - " & "calling SAP_AccDoc_execute")
-                SAP_AccDoc_execute(pTest:=True)
+                SAP_AccDoc_execute_dyn(pTest:=True)
             End If
         Else
             log.Debug("ButtonCheckAccDoc_Click - " & "connection check failed")
@@ -70,7 +72,7 @@ Public Class SapAccRibbon
             log.Debug("ButtonPostAccDoc_Click - " & "aSapVersionRet=" & CStr(aSapVersionRet))
             If aSapVersionRet = True Then
                 log.Debug("ButtonPostAccDoc_Click - " & "calling SAP_AccDoc_execute")
-                SAP_AccDoc_execute(pTest:=False)
+                SAP_AccDoc_execute_dyn(pTest:=False)
             End If
         Else
             log.Debug("ButtonPostAccDoc_Click - " & "connection check failed")
@@ -130,6 +132,193 @@ Public Class SapAccRibbon
         Else
             Globals.Ribbons.SapAccRibbon.Invoice.Visible = True
         End If
+    End Sub
+
+    Private Function getAccParameters() As Integer
+        Dim aPws As Excel.Worksheet
+        Dim aWB As Excel.Workbook
+        Dim akey As String
+        Dim aName As String
+        Dim i As Integer
+
+        log.Debug("getAccParameters - " & "reading Parameter")
+        aWB = Globals.SapAccAddIn.Application.ActiveWorkbook
+        Try
+            aPws = aWB.Worksheets("Parameter")
+        Catch Exc As System.Exception
+            MsgBox("No Parameter Sheet in current workbook. Check if the current workbook is a valid SAP Accounting Template",
+                   MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "Sap Accounting")
+            getAccParameters = False
+            Exit Function
+        End Try
+        aName = "SAPAccDoc"
+        akey = CStr(aPws.Cells(1, 1).Value)
+        If akey <> aName Then
+            MsgBox("Cell A1 of the parameter sheet does not contain the key " & aName & ". Check if the current workbook is a valid SAP Accounting Template",
+                   MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SAP PS")
+            getAccParameters = False
+            Exit Function
+        End If
+        i = 2
+        aAccPar = New SAPCommon.TStr
+        Do
+            aAccPar.add(CStr(aPws.Cells(i, 2).value), CStr(aPws.Cells(i, 4).value), pFORMAT:=CStr(aPws.Cells(i, 3).value))
+            i += 1
+        Loop While CStr(aPws.Cells(i, 2).value) <> "" Or CStr(aPws.Cells(i, 2).value) <> ""
+        ' no obligatory parameters for AccDoc - otherwise check here
+        getAccParameters = True
+    End Function
+
+    Private Function getIntParameters() As Integer
+        Dim aPws As Excel.Worksheet
+        Dim aWB As Excel.Workbook
+        Dim i As Integer
+
+        log.Debug("getIntParameters - " & "reading Parameter")
+        aWB = Globals.SapAccAddIn.Application.ActiveWorkbook
+        Try
+            aPws = aWB.Worksheets("Parameter_Int")
+        Catch Exc As System.Exception
+            MsgBox("No Parameter_Int Sheet in current workbook. Check if the current workbook is a valid SAP Accounting Template",
+                   MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "Sap Accounting")
+            getIntParameters = False
+            Exit Function
+        End Try
+        i = 2
+        aIntPar = New SAPCommon.TStr
+        Do
+            aIntPar.add(CStr(aPws.Cells(i, 2).value), CStr(aPws.Cells(i, 3).value))
+            i += 1
+        Loop While CStr(aPws.Cells(i, 2).value) <> "" Or CStr(aPws.Cells(i, 2).value) <> ""
+        ' no obligatory parameters check - we should know what we are doing
+        getIntParameters = True
+    End Function
+
+    Private Sub SAP_AccDoc_execute_dyn(pTest As Boolean)
+        Dim aSAPAcctngDocument As New SAPAcctngDocument(aSapCon)
+        ' get posting parameters
+        If Not getAccParameters() Then
+            Exit Sub
+        End If
+        ' get internal parameters
+        If Not getIntParameters() Then
+            Exit Sub
+        End If
+
+        ' Check Authority
+        log.Debug("SAP_AccDoc_execute - " & "creating aSAPZFI_CHECK_F_BKPF_BUK")
+        Dim aSAPZFI_CHECK_F_BKPF_BUK As New SAPZFI_CHECK_F_BKPF_BUK(aSapCon)
+        Dim aAuth As Integer
+
+        log.Debug("SAP_AccDoc_execute - " & "reading Data")
+        ' Read the Data
+        Dim aLOff As Integer = If(aIntPar.value("LOFF", "DATA") <> "", CInt(aIntPar.value("LOFF", "DATA")), 4)
+        Dim aDwsName As String = If(aIntPar.value("WS", "DATA") <> "", aIntPar.value("WS", "DATA"), "Data")
+        Dim aDws As Excel.Worksheet
+        Dim aWB As Excel.Workbook
+        aWB = Globals.SapAccAddIn.Application.ActiveWorkbook
+        log.Debug("SAP_AccDoc_execute - " & "reading Data")
+        ' Read the Data
+        Try
+            aDws = aWB.Worksheets(aDwsName)
+        Catch Exc As System.Exception
+            MsgBox("No " & aDwsName & " Sheet in current workbook. Check if the current workbook is a valid SAP Accounting Template",
+                   MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "Sap Accounting")
+            Exit Sub
+        End Try
+
+        aDws.Activate()
+        Dim aAccItems As New TData(aIntPar)
+        Dim aAccItem As New TDataRec
+        Dim aKey As String
+        Dim j As Integer
+        Dim jMax As UInt64 = 0
+        Dim aDocNr As UInt64 = 0
+        Dim aDumpDocNr As UInt64 = If(aIntPar.value("DBG", "DUMPDOCNR") <> "", CInt(aIntPar.value("DBG", "DUMPDOCNR")), 0)
+        Dim aMsgClmn As String = If(aIntPar.value("COL", "DATAMSG") <> "", aIntPar.value("COL", "DATAMSG"), "INT-MSG")
+        Dim aMsgClmnNr As Integer = 0
+        Dim aDocClmn As String = If(aIntPar.value("COL", "DATADOC") <> "", aIntPar.value("COL", "DATADOC"), "INT-DOC")
+        Dim aDocClmnNr As Integer = 0
+        Dim aCompCode As String
+        Dim aRetStr As String
+        Do
+            jMax += 1
+            If CStr(aDws.Cells(1, jMax).value) = aMsgClmn Then
+                aMsgClmnNr = jMax
+            ElseIf CStr(aDws.Cells(1, jMax).value) = aDocClmn Then
+                aDocClmnNr = jMax
+            End If
+        Loop While CStr(aDws.Cells(aLOff - 3, jMax + 1).value) <> ""
+        ' process the data
+        Try
+            log.Debug("SAP_AccDoc_execute - " & "processing data - disabling events, screen update, cursor")
+            Globals.SapAccAddIn.Application.Cursor = Microsoft.Office.Interop.Excel.XlMousePointer.xlWait
+            Globals.SapAccAddIn.Application.EnableEvents = False
+            Globals.SapAccAddIn.Application.ScreenUpdating = False
+            Dim i As UInt64 = aLOff + 1
+            Do
+                aKey = CStr(i)
+                For j = 1 To jMax
+                    If CStr(aDws.Cells(1, j).value) <> "N/A" And CStr(aDws.Cells(1, j).value) <> "" And
+                        CStr(aDws.Cells(1, j).value) <> aMsgClmn And CStr(aDws.Cells(1, j).value) <> aMsgClmn Then
+                        aAccItems.addValue(aKey, CStr(aDws.Cells(aLOff - 3, j).value), CStr(aDws.Cells(i, j).value),
+                                           CStr(aDws.Cells(aLOff - 2, j).value), CStr(aDws.Cells(aLOff - 1, j).value),
+                                           pEmptyChar:="")
+                    End If
+                Next
+                aAccItem = aAccItems.aTDataDic(aKey)
+                ' if the posting indicator is set -> call the sap AC_DOCUMENT BAPI
+                If aAccItem.getPost(aIntPar) <> "" Then
+                    log.Debug("SAP_AccDoc_execute - " & "found posting indicator, aData.Count=" & CStr(aAccItems.aTDataDic.Count))
+                    ' only convert and process the data of documents that have not been processed
+                    aDocNr += 1
+                    If InStr(1, aDws.Cells(i, aMsgClmnNr).Value, "BKPFF") = 0 Then
+                        Dim aTSAP_DocData As New TSAP_DocData(aAccPar, aIntPar)
+                        If aTSAP_DocData.fillHeader(aAccItems) And aTSAP_DocData.fillData(aAccItems) Then
+                            ' check if we should dump this document
+                            If aDocNr = aDumpDocNr Then
+                                log.Debug("SAP_AccDoc_execute - " & "dumping Document Nr " & CStr(aDocNr))
+                                aTSAP_DocData.dumpHeader()
+                                aTSAP_DocData.dumpData()
+                            End If
+                            ' post the document here
+                            log.Debug("SAP_AccDoc_execute - " & "filled Header and Data in aTSAP_DocData, aTSAP_DocData.aData.Count=" & CStr(aTSAP_DocData.aData.aTDataDic.Count))
+                            aCompCode = aTSAP_DocData.getCompanyCode()
+                            log.Debug("SAP_AccDoc_execute - " & "calling aSAPZFI_CHECK_F_BKPF_BUK.checkAuthority(aCompCode), aCompCode=" & aCompCode)
+                            aAuth = aSAPZFI_CHECK_F_BKPF_BUK.checkAuthority(aCompCode)
+                            log.Debug("SAP_AccDoc_execute - " & "aAuth=" & CStr(aAuth))
+                            If aAuth <> 2 Then
+                                log.Warn("SAP_AccDoc_execute - " & "User not authorized for company code " & aCompCode)
+                                aDws.Cells(i, aMsgClmnNr) = "User not authorized for company code " & aCompCode
+                            Else
+                                log.Debug("SAP_AccDoc_execute - " & "calling aSAPAcctngDocument.post, pTest=" & CStr(pTest))
+                                aRetStr = aSAPAcctngDocument.post(aTSAP_DocData, pTest:=pTest)
+                                log.Debug("SAP_AccDoc_execute - " & "aSAPAcctngDocument.post returned, aRetStr=" & aRetStr)
+                                aDws.Cells(i, aMsgClmnNr) = CStr(aRetStr)
+                                aDws.Cells(i, aDocClmnNr) = CStr(ExtractDocNumberFromMessage(aRetStr))
+                            End If
+                        Else
+                            log.Warn("SAP_AccDoc_execute - " & "filling Header or Data in aTSAP_DocData failed!")
+                            aDws.Cells(i, aMsgClmnNr) = "Filling Header or Data in aTSAP_DocData failed!"
+                        End If
+                    End If
+                    aAccItems = New TData(aIntPar)
+                End If
+                i += 1
+            Loop While CStr(aDws.Cells(i, 1).value) <> ""
+            log.Debug("SAP_AccDoc_execute - " & "all data processed - enabling events, screen update, cursor")
+            Globals.SapAccAddIn.Application.EnableEvents = True
+            Globals.SapAccAddIn.Application.ScreenUpdating = True
+            Globals.SapAccAddIn.Application.Cursor = Microsoft.Office.Interop.Excel.XlMousePointer.xlDefault
+        Catch ex As System.Exception
+            Globals.SapAccAddIn.Application.EnableEvents = True
+            Globals.SapAccAddIn.Application.ScreenUpdating = True
+            Globals.SapAccAddIn.Application.Cursor = Microsoft.Office.Interop.Excel.XlMousePointer.xlDefault
+            MsgBox("SAP_AccDoc_execute failed! " & ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "Sap Accounting")
+            log.Error("SAP_AccDoc_execute - " & "Exception=" & ex.ToString)
+            Exit Sub
+        End Try
+
     End Sub
 
     Private Sub SAP_AccDoc_execute(pTest As Boolean)
@@ -549,10 +738,16 @@ Public Class SapAccRibbon
         Dim aUseBasis As Boolean = False
         Dim i As Integer
 
+        ' get internal parameters
+        If Not getIntParameters() Then
+            Exit Sub
+        End If
+        Dim aLOff As Integer = If(aIntPar.value("LOFF", "DATA") <> "", CInt(aIntPar.value("LOFF", "DATA")), 4)
+
         log.Debug("ButtonGenGLData_Click - " & "Invoice Sheet")
         aWB = Globals.SapAccAddIn.Application.ActiveWorkbook
         Try
-            aPws = aWB.Worksheets("Parameter")
+            aPWs = aWB.Worksheets("Parameter")
             If CStr(aPWs.Cells(17, 2).Value) = "X" Then
                 aUselocal = True
             End If
@@ -621,22 +816,26 @@ Public Class SapAccRibbon
                 Exit Sub
             End Try
             Dim aRange As Excel.Range
-            If CStr(aDWs.Cells(2, 1).Value) <> "" Then
-                aRange = aDWs.Range("A2")
-                i = 2
+            If CStr(aDWs.Cells(aLOff + 1, 1).Value) <> "" Then
+                ' aRange = aDWs.Range(aDWs.Cells(aLOff + 1, 1))
+                i = aLOff + 1
                 Do
                     i += 1
                 Loop While CStr(aDWs.Cells(i, 1).Value) <> ""
-                aRange = aDWs.Range(aRange, aDWs.Cells(i, 1))
+                aRange = aDWs.Range(aDWs.Cells(aLOff + 1, 1), aDWs.Cells(i, 1))
                 aRange.EntireRow.Delete()
             End If
+            Dim jMax As Integer = 0
+            Do
+                jMax += 1
+            Loop While CStr(aDWs.Cells(aLOff, jMax + 1).value) <> ""
             Dim aKey As String
             Dim aValue As String
-            i = 2
+            i = aLOff + 1
             For Each aPostingLine In aPostingLines
-                For j = 1 To CM + 10
-                    If CStr(aDWs.Cells(1, j).Value) <> "" Then
-                        aKey = CStr(aDWs.Cells(1, j).Value)
+                For j = 1 To jMax
+                    If CStr(aDWs.Cells(aLOff, j).Value) <> "" Then
+                        aKey = CStr(aDWs.Cells(aLOff, j).Value)
                         If aPostingLine.ContainsKey(aKey) Then
                             aValue = aPostingLine(aKey).Value
                             If aKey = "Amount" And aValue <> "" Then

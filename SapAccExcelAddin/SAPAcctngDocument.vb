@@ -22,6 +22,249 @@ Public Class SAPAcctngDocument
             MsgBox("New failed! " & ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SAPAcctngDocument")
         End Try
     End Sub
+    Public Function post(ByRef pTSAP_DocData As TSAP_DocData, pTest As Boolean) As String
+        Dim aSAPCalcTaxesFromGross As New SAPCalcTaxesFromGross(sapcon)
+        post = ""
+        Try
+            If pTest Then
+                log.Debug("post - " & "creating Function BAPI_ACC_DOCUMENT_CHECK")
+                oRfcFunction = destination.Repository.CreateFunction("BAPI_ACC_DOCUMENT_CHECK")
+            Else
+                log.Debug("post - " & "creating Function BAPI_ACC_DOCUMENT_POST")
+                oRfcFunction = destination.Repository.CreateFunction("BAPI_ACC_DOCUMENT_POST")
+            End If
+
+            log.Debug("post - " & "oRfcFunction.Metadata.Name=" & oRfcFunction.Metadata.Name)
+            log.Debug("post - " & "BeginContext")
+            RfcSessionManager.BeginContext(destination)
+            Dim lSAPWbsElement As New SAPWbsElement(sapcon)
+            log.Debug("post - " & "Getting Function parameters")
+            Dim oDocumentHeader As IRfcStructure = oRfcFunction.GetStructure("DOCUMENTHEADER")
+            Dim oCustomerCPD As IRfcStructure = oRfcFunction.GetStructure("CUSTOMERCPD")
+            Dim oAccountGl As IRfcTable = oRfcFunction.GetTable("ACCOUNTGL")
+            Dim oAccountTax As IRfcTable = oRfcFunction.GetTable("ACCOUNTTAX")
+            Dim oAccountPayable As IRfcTable = oRfcFunction.GetTable("ACCOUNTPAYABLE")
+            Dim oAccountReceivable As IRfcTable = oRfcFunction.GetTable("ACCOUNTRECEIVABLE")
+            Dim oCurrencyAmount As IRfcTable = oRfcFunction.GetTable("CURRENCYAMOUNT")
+            Dim oCriteria As IRfcTable = oRfcFunction.GetTable("CRITERIA")
+            Dim oExtension2 As IRfcTable = oRfcFunction.GetTable("EXTENSION2")
+            Dim oRETURN As IRfcTable = oRfcFunction.GetTable("RETURN")
+            oAccountGl.Clear()
+            oAccountTax.Clear()
+            oAccountPayable.Clear()
+            oAccountReceivable.Clear()
+            oCurrencyAmount.Clear()
+            oCriteria.Clear()
+            oExtension2.Clear()
+            oRETURN.Clear()
+
+            Dim aTStrRec As SAPCommon.TStrRec
+            ' fill the header
+            log.Debug("post - " & "setting header values")
+            oDocumentHeader.SetValue("BUS_ACT", "RFBU")
+            If destination.User Is Nothing Then
+                oDocumentHeader.SetValue("USERNAME", destination.SystemAttributes.User)
+            Else
+                oDocumentHeader.SetValue("USERNAME", destination.User)
+            End If
+            For Each aTStrRec In pTSAP_DocData.aHdrRec.aTDataRecCol
+                oDocumentHeader.SetValue(aTStrRec.Fieldname, aTStrRec.formated)
+            Next
+            ' fill the data
+            Dim aKvP As KeyValuePair(Of String, TDataRec)
+            Dim aTDataRec As TDataRec
+            Dim lCnt As Integer
+            Dim lCntSav As Integer
+            lCnt = 0
+            For Each aKvP In pTSAP_DocData.aData.aTDataDic
+                Dim oAccountGlAppended As Boolean = False
+                Dim oAccountReceivableAppended As Boolean = False
+                Dim oAccountPayableAppended As Boolean = False
+                Dim lTaxCode As String = ""
+                Dim lTaxJurCode As String = ""
+                aTDataRec = aKvP.Value
+                lCnt += 1
+                For Each aTStrRec In aTDataRec.aTDataRecCol
+                    Select Case aTStrRec.Strucname
+                        Case "CUSTOMERCPD"
+                            oCustomerCPD.SetValue(aTStrRec.Fieldname, aTStrRec.formated)
+                        Case "ACCOUNTGL"
+                            If Not oAccountGlAppended Then
+                                oAccountGl.Append()
+                                oAccountGl.SetValue("ITEMNO_ACC", lCnt)
+                                oAccountGlAppended = True
+                            End If
+                            oAccountGl.SetValue(aTStrRec.Fieldname, aTStrRec.formated())
+                            If aTStrRec.Fieldname = "TAX_CODE" Then
+                                lTaxCode = aTStrRec.Value
+                            ElseIf aTStrRec.Fieldname = "TAX_CODE" Then
+                                lTaxJurCode = aTStrRec.Value
+                            End If
+                        Case "ACCOUNTRECEIVABLE"
+                            If Not oAccountReceivableAppended Then
+                                oAccountReceivable.Append()
+                                oAccountReceivable.SetValue("ITEMNO_ACC", lCnt)
+                                oAccountReceivableAppended = True
+                            End If
+                            oAccountReceivable.SetValue(aTStrRec.Fieldname, aTStrRec.formated())
+                        Case "ACCOUNTPAYABLE"
+                            If Not oAccountPayableAppended Then
+                                oAccountPayable.Append()
+                                oAccountPayable.SetValue("ITEMNO_ACC", lCnt)
+                                oAccountPayableAppended = True
+                            End If
+                            oAccountPayable.SetValue(aTStrRec.Fieldname, aTStrRec.formated())
+                        Case "CRITERIA"
+                            oCriteria.Append()
+                            oCriteria.SetValue("ITEMNO_ACC", lCnt)
+                            oCriteria.SetValue("FIELDNAME", aTStrRec.Fieldname)
+                            If aTStrRec.Format = "WBS" Then
+                                oCriteria.SetValue("CHARACTER", lSAPWbsElement.GetPspnr(aTStrRec.Value))
+                            Else
+                                oCriteria.SetValue("CHARACTER", aTStrRec.formated())
+                            End If
+                        Case "ACCOUNTTAX"
+                        Case "CURRENCYAMOUNT" ' should never happen because amounts are in the aAmounts Dictionary
+                        Case Else
+                            oExtension2.Append()
+                            oExtension2.SetValue("STRUCTURE", aTStrRec.Strucname)
+                            oExtension2.SetValue("VALUEPART1", SAPCommon.SAPFormat.unpack(CStr(lCnt), 10))
+                            oExtension2.SetValue(aTStrRec.Fieldname, aTStrRec.formated())
+                    End Select
+                Next
+                Dim aDummyPar As New SAPCommon.TStr
+                Dim aData_Am As New TData(aDummyPar)
+                Dim aDataRec_Am As New TDataRec
+                Dim aTStrRec_Am As New SAPCommon.TStrRec
+                ' read the amounts for the data record
+                aData_Am = pTSAP_DocData.aAmounts(aKvP.Key)
+                lCntSav = lCnt
+                Dim oAccountTaxAppended = False
+                For Each aKvB_Am In aData_Am.aTDataDic
+                    Dim oCurrencyAmountAppended = False
+                    Dim aCurrType As String = ""
+                    Dim aCurrency As String = ""
+                    lCnt = lCntSav
+                    aDataRec_Am = aKvB_Am.Value
+                    For Each aTStrRec_Am In aDataRec_Am.aTDataRecCol
+                        If Not oCurrencyAmountAppended Then
+                            oCurrencyAmount.Append()
+                            oCurrencyAmount.SetValue("ITEMNO_ACC", lCnt)
+                            oCurrencyAmountAppended = True
+                        End If
+                        oCurrencyAmount.SetValue(aTStrRec_Am.Fieldname, aTStrRec_Am.formated())
+                        If aTStrRec_Am.Fieldname = "CURR_TYPE" Then
+                            aCurrType = aTStrRec_Am.Value
+                            aCurrency = pTSAP_DocData.getCurrency(aTStrRec_Am.Value)
+                            oCurrencyAmount.SetValue("CURRENCY", aCurrency)
+                        End If
+                    Next
+                    ' check if this is a direct postin to a tax account
+                    Dim lTaxAmtOri As Double = 0
+                    Dim lTaxBaseOri As Double = 0
+                    If oCurrencyAmount.CurrentRow("TAX_AMT").GetDouble() <> 0 And
+                        oCurrencyAmount.CurrentRow("TAX_AMT").GetDouble() = oCurrencyAmount.CurrentRow("AMT_DOCCUR").GetDouble() Then
+                        ' set the original position to 0 - or should we delete the row?
+                        lTaxAmtOri = oCurrencyAmount.CurrentRow("TAX_AMT").GetDouble()
+                        lTaxBaseOri = oCurrencyAmount.CurrentRow("AMT_BASE").GetDouble()
+                        oCurrencyAmount.SetValue("TAX_AMT", Format$(CDbl(0), "0.00"))
+                        oCurrencyAmount.SetValue("AMT_BASE", Format$(CDbl(0), "0.00"))
+                        oCurrencyAmount.SetValue("AMT_DOCCUR", Format$(CDbl(0), "0.00"))
+                        lCnt += 1
+                        If Not oAccountTaxAppended Then
+                            oAccountTax.Append()
+                            oAccountTax.SetValue("ITEMNO_ACC", lCnt)
+                            oAccountTax.SetValue("ITEMNO_ACC", lCnt)
+                            Dim lCondKey As String = aSAPCalcTaxesFromGross.getTaxCondKey(oDocumentHeader("COMP_CODE").GetString(), lTaxCode, aCurrency,
+                                                                            CDate(oDocumentHeader("PSTNG_DATE").GetString()),
+                                                                            oCurrencyAmount.CurrentRow("AMT_DOCCUR").GetDouble(), lTaxJurCode)
+                            oAccountTax.SetValue("COND_KEY", lCondKey)
+                            oAccountTax.SetValue("TAX_CODE", lTaxCode)
+                            oAccountTax.SetValue("DIRECT_TAX", "X")
+                            oAccountTaxAppended = True
+                        End If
+                        oCurrencyAmount.Append()
+                        oCurrencyAmount.SetValue("ITEMNO_ACC", lCnt)
+                        oCurrencyAmount.SetValue("CURR_TYPE", aCurrType)
+                        oCurrencyAmount.SetValue("CURRENCY", aCurrency)
+                        oCurrencyAmount.SetValue("AMT_DOCCUR", Format$(lTaxAmtOri, "0.00"))
+                        If lTaxBaseOri <> 0 Then
+                            oCurrencyAmount.SetValue("AMT_BASE", Format$(lTaxBaseOri, "0.00"))
+                        Else
+                            oCurrencyAmount.SetValue("AMT_BASE", Format$(lTaxAmtOri, "0.00"))
+                        End If
+                        ' calculate and add VAT
+                    ElseIf lTaxCode <> "" Then
+                        Dim lTaxSum As Double = 0
+                        Dim lTaxBase As Double = 0
+                        Dim lTaxLines As Integer = 0
+                        Dim oTAX_ITEM_OUT As IRfcTable
+                        log.Debug("post - " & "calling aSAPCalcTaxesFromGross.getTaxAmount")
+                        oTAX_ITEM_OUT = aSAPCalcTaxesFromGross.getTaxAmount(oDocumentHeader("COMP_CODE").GetString(), lTaxCode, aCurrency,
+                                                                            CDate(oDocumentHeader("PSTNG_DATE").GetString()), oCurrencyAmount.CurrentRow("AMT_DOCCUR").GetDouble(), lTaxJurCode)
+                        lTaxLines = oTAX_ITEM_OUT.Count
+                        ' calculate the taxsum
+                        lTaxSum = 0
+                        For i As Integer = 0 To lTaxLines - 1
+                            lTaxSum = lTaxSum + oTAX_ITEM_OUT(i).GetDouble("FWSTE")
+                        Next i
+                        lTaxBase = oCurrencyAmount.CurrentRow("AMT_DOCCUR").GetDouble() - lTaxSum
+                        log.Debug("post - " & "lTaxLines=" & CStr(lTaxLines) & " lTaxSum=" & CStr(lTaxSum) & " lTaxBase=" & CStr(lTaxBase))
+                        ' change the ammount of the row to the net value
+                        oCurrencyAmount.SetValue("AMT_DOCCUR", Format$(lTaxBase, "0.00"))
+                        ' add the tax positions
+                        If lTaxSum <> 0 Or lTaxLines > 1 Then
+                            For i As Integer = 0 To lTaxLines - 1
+                                lCnt += 1
+                                If Not oAccountTaxAppended Then
+                                    oAccountTax.Append()
+                                    oAccountTax.SetValue("ITEMNO_ACC", lCnt)
+                                    oAccountTax.SetValue("COND_KEY", oTAX_ITEM_OUT(i).GetValue("KSCHL"))
+                                    oAccountTax.SetValue("TAX_CODE", oTAX_ITEM_OUT(i).GetValue("MWSKZ"))
+                                    oAccountTax.SetValue("TAXJURCODE", oTAX_ITEM_OUT(i).GetValue("TXJCD"))
+                                    oAccountTaxAppended = True
+                                End If
+                                oCurrencyAmount.Append()
+                                oCurrencyAmount.SetValue("ITEMNO_ACC", lCnt)
+                                oCurrencyAmount.SetValue("CURR_TYPE", aCurrType)
+                                oCurrencyAmount.SetValue("CURRENCY", aCurrency)
+                                oCurrencyAmount.SetValue("AMT_DOCCUR", Format$(oTAX_ITEM_OUT(i).GetDouble("FWSTE"), "0.00"))
+                                oCurrencyAmount.SetValue("AMT_BASE", Format$(oTAX_ITEM_OUT(i).GetDouble("FWBAS"), "0.00"))
+                            Next i
+                        End If
+                    End If
+                Next
+            Next
+            ' call the BAPI
+            log.Debug("post - " & "invoking " & oRfcFunction.Metadata.Name)
+            oRfcFunction.Invoke(destination)
+            log.Debug("post - " & "oRETURN.Count=" & CStr(oRETURN.Count))
+            If oRETURN.Count > 0 Then
+                If oRETURN(0).GetValue("TYPE") = "S" Then
+                    Dim aSAPBapiTranctionCommit As New SAPBapiTranctionCommit(sapcon)
+                    If Not pTest Then
+                        log.Debug("post - " & "calling aSAPBapiTranctionCommit.commit()")
+                        aSAPBapiTranctionCommit.commit()
+                    End If
+                    post = oRETURN(0).GetValue("MESSAGE")
+                Else
+                    For i As Integer = 0 To oRETURN.Count - 1
+                        post = post & ";" & oRETURN(i).GetValue("MESSAGE")
+                    Next i
+                End If
+            Else
+                log.Debug("post - " & "Error: No Return message from SAP")
+                post = "Error: No Return message from SAP"
+            End If
+        Catch Ex As System.Exception
+            log.Error("commit - Exception=" & Ex.ToString)
+            MsgBox("Error: Exception " & Ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SAPAcctngDocument")
+            post = "Error: Exception in posting"
+        Finally
+            log.Debug("post - " & "EndContext")
+            RfcSessionManager.EndContext(destination)
+        End Try
+    End Function
 
     Public Function post(pBLDAT As Date, pBLART As String, pBUKRS As String,
         pBUDAT As Date, pWAERS As String, pXBLNR As String,
@@ -365,7 +608,8 @@ Public Class SAPAcctngDocument
                                     oCurrencyAmount.SetValue("ITEMNO_ACC", lCnt)
                                     oCurrencyAmount.SetValue("CURRENCY", pWAERS)
                                     oCurrencyAmount.SetValue("AMT_DOCCUR", Format$(oTAX_ITEM_OUT(i).GetDouble("FWSTE"), "0.00"))
-                                    oCurrencyAmount.SetValue("AMT_BASE", Format$(lTaxBase, "0.00"))
+                                    ' oCurrencyAmount.SetValue("AMT_BASE", Format$(lTaxBase, "0.00"))
+                                    oCurrencyAmount.SetValue("AMT_BASE", Format$(oTAX_ITEM_OUT(i).GetDouble("FWBAS"), "0.00"))
                                 Next i
                             End If
                         End If
@@ -398,7 +642,8 @@ Public Class SAPAcctngDocument
                                         oCurrencyAmount.SetValue("CURR_TYPE", lRow.CURRTYP2)
                                         oCurrencyAmount.SetValue("CURRENCY", lRow.WAERS2)
                                         oCurrencyAmount.SetValue("AMT_DOCCUR", Format$(oTAX_ITEM_OUT(i).GetDouble("FWSTE"), "0.00"))
-                                        oCurrencyAmount.SetValue("AMT_BASE", Format$(lTaxBase, "0.00"))
+                                        ' oCurrencyAmount.SetValue("AMT_BASE", Format$(lTaxBase, "0.00"))
+                                        oCurrencyAmount.SetValue("AMT_BASE", Format$(oTAX_ITEM_OUT(i).GetDouble("FWBAS"), "0.00"))
                                     Next i
                                 End If
                             End If
@@ -432,7 +677,8 @@ Public Class SAPAcctngDocument
                                         oCurrencyAmount.SetValue("CURR_TYPE", lRow.CURRTYP3)
                                         oCurrencyAmount.SetValue("CURRENCY", lRow.WAERS3)
                                         oCurrencyAmount.SetValue("AMT_DOCCUR", Format$(oTAX_ITEM_OUT(i).GetDouble("FWSTE"), "0.00"))
-                                        oCurrencyAmount.SetValue("AMT_BASE", Format$(lTaxBase, "0.00"))
+                                        ' oCurrencyAmount.SetValue("AMT_BASE", Format$(lTaxBase, "0.00"))
+                                        oCurrencyAmount.SetValue("AMT_BASE", Format$(oTAX_ITEM_OUT(i).GetDouble("FWBAS"), "0.00"))
                                     Next i
                                 End If
                             End If
@@ -466,14 +712,15 @@ Public Class SAPAcctngDocument
                                         oCurrencyAmount.SetValue("CURR_TYPE", lRow.CURRTYP4)
                                         oCurrencyAmount.SetValue("CURRENCY", lRow.WAERS4)
                                         oCurrencyAmount.SetValue("AMT_DOCCUR", Format$(oTAX_ITEM_OUT(i).GetDouble("FWSTE"), "0.00"))
-                                        oCurrencyAmount.SetValue("AMT_BASE", Format$(lTaxBase, "0.00"))
+                                        ' oCurrencyAmount.SetValue("AMT_BASE", Format$(lTaxBase, "0.00"))
+                                        oCurrencyAmount.SetValue("AMT_BASE", Format$(oTAX_ITEM_OUT(i).GetDouble("FWBAS"), "0.00"))
                                     Next i
                                 End If
                             End If
                         End If
                     End If
                 End If
-                    If lRow.ACCTYPE = "D" Or lRow.ACCTYPE = "C" Then
+                If lRow.ACCTYPE = "D" Or lRow.ACCTYPE = "C" Then
                     log.Debug("post - " & "adding oAccountReceivable ITEMNO_ACC=" & CStr(lCnt) & " CUSTOMER=" & lSAPFormat.unpack(lRow.NEWKO, 10))
                     oAccountReceivable.Append()
                     oAccountReceivable.SetValue("ITEMNO_ACC", lCnt)
