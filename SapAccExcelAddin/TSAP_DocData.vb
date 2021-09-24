@@ -33,6 +33,15 @@
         aIntPar = pIntPar
     End Sub
 
+    Public Function checkHeader() As Boolean
+        checkHeader = If(Not (aHdrRec.aTDataRecCol.Contains("HD-COMP_CODE") Or aHdrRec.aTDataRecCol.Contains("GL+CU+VE+HD-COMP_CODE")) Or
+                         Not aHdrRec.aTDataRecCol.Contains("HD-DOC_DATE") Or
+                         Not aHdrRec.aTDataRecCol.Contains("HD-PSTNG_DATE") Or
+                         Not aHdrRec.aTDataRecCol.Contains("HD-DOC_TYPE") Or
+                         Not aHdrRec.aTDataRecCol.Contains("HD-DOC_DATE") Or
+                         Not aCurRec.aTDataRecCol.Contains("A00-CURRENCY"), False, True)
+    End Function
+
     Public Function fillHeader(pData As TData) As Boolean
         aHdrRec = New TDataRec
         aCurRec = New TDataRec
@@ -43,8 +52,8 @@
         Dim aNewCurRec As New TDataRec
         aPostRec = pData.getPostingRecord()
         If IsNothing(aPostRec) Then
-            log.Debug("fillHeader - " & "aPostRec is Nothing -> nothing to post, don't fill Header")
-            fillHeader = False
+            log.Debug("fillHeader - " & "aPostRec Is Nothing -> Nothing To post, don't fill Header")
+        fillHeader = False
             Exit Function
         End If
         For Each aKvb In aAccPar.getData()
@@ -97,10 +106,12 @@
                             addAmountRecord(CStr(aCnt), aTStrRec)
                         ElseIf valid_Ext_Field(aTStrRec) Then
                             aData.addValue(CStr(aCnt), aTStrRec)
-                        ElseIf valid_Pa_Field(aTStrRec) And isPA Then
+                        End If
+                        If valid_Pa_Field(aTStrRec) And isPA Then
+                            aTStrRec.Fieldname = If(aIntPar.value(sPa, aTStrRec.Fieldname) <> "", aIntPar.value(sPa, aTStrRec.Fieldname), aTStrRec.Fieldname)
                             aData.addValue(CStr(aCnt), aTStrRec, pNewStrucname:=sPa)
                         End If
-                        If valid_Tax_Field(aTStrRec) Then 'TX information can be for TX and GL
+                            If valid_Tax_Field(aTStrRec) Then 'TX information can be for TX and GL
                             aData.addValue(CStr(aCnt), aTStrRec, pNewStrucname:=sTx)
                         End If
                     Next

@@ -24,6 +24,7 @@ Public Class SAPAcctngDocument
     End Sub
     Public Function post(ByRef pTSAP_DocData As TSAP_DocData, pTest As Boolean) As String
         Dim aSAPCalcTaxesFromGross As New SAPCalcTaxesFromGross(sapcon)
+        Dim aSapFormat As New SAPCommon.SAPFormat()
         post = ""
         Try
             If pTest Then
@@ -80,6 +81,8 @@ Public Class SAPAcctngDocument
                 Dim oAccountGlAppended As Boolean = False
                 Dim oAccountReceivableAppended As Boolean = False
                 Dim oAccountPayableAppended As Boolean = False
+                Dim oExtension2Appended As Boolean = False
+                Dim lastStrucname As String
                 Dim lTaxCode As String = ""
                 Dim lTaxJurCode As String = ""
                 aTDataRec = aKvP.Value
@@ -126,9 +129,13 @@ Public Class SAPAcctngDocument
                         Case "ACCOUNTTAX"
                         Case "CURRENCYAMOUNT" ' should never happen because amounts are in the aAmounts Dictionary
                         Case Else
-                            oExtension2.Append()
-                            oExtension2.SetValue("STRUCTURE", aTStrRec.Strucname)
-                            oExtension2.SetValue("VALUEPART1", SAPCommon.SAPFormat.unpack(CStr(lCnt), 10))
+                            If Not oExtension2Appended Or lastStrucname <> aTStrRec.Strucname Then
+                                oExtension2.Append()
+                                oExtension2.SetValue("STRUCTURE", aTStrRec.Strucname)
+                                oExtension2.SetValue("VALUEPART1", aSapFormat.unpack(CStr(lCnt), 10))
+                                oExtension2Appended = True
+                                lastStrucname = aTStrRec.Strucname
+                            End If
                             oExtension2.SetValue(aTStrRec.Fieldname, aTStrRec.formated())
                     End Select
                 Next
@@ -216,14 +223,11 @@ Public Class SAPAcctngDocument
                         If lTaxSum <> 0 Or lTaxLines > 1 Then
                             For i As Integer = 0 To lTaxLines - 1
                                 lCnt += 1
-                                If Not oAccountTaxAppended Then
-                                    oAccountTax.Append()
-                                    oAccountTax.SetValue("ITEMNO_ACC", lCnt)
-                                    oAccountTax.SetValue("COND_KEY", oTAX_ITEM_OUT(i).GetValue("KSCHL"))
-                                    oAccountTax.SetValue("TAX_CODE", oTAX_ITEM_OUT(i).GetValue("MWSKZ"))
-                                    oAccountTax.SetValue("TAXJURCODE", oTAX_ITEM_OUT(i).GetValue("TXJCD"))
-                                    oAccountTaxAppended = True
-                                End If
+                                oAccountTax.Append()
+                                oAccountTax.SetValue("ITEMNO_ACC", lCnt)
+                                oAccountTax.SetValue("COND_KEY", oTAX_ITEM_OUT(i).GetValue("KSCHL"))
+                                oAccountTax.SetValue("TAX_CODE", oTAX_ITEM_OUT(i).GetValue("MWSKZ"))
+                                oAccountTax.SetValue("TAXJURCODE", oTAX_ITEM_OUT(i).GetValue("TXJCD"))
                                 oCurrencyAmount.Append()
                                 oCurrencyAmount.SetValue("ITEMNO_ACC", lCnt)
                                 oCurrencyAmount.SetValue("CURR_TYPE", aCurrType)
