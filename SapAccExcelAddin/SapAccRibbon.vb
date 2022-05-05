@@ -118,11 +118,14 @@ Public Class SapAccRibbon
         Dim sAll As NameValueCollection
         Dim s As String
         Dim enableInvoiceReposting As Boolean = False
+        Dim enableCosReposting As Boolean = False
         aSapGeneral = New SapGeneral
         Try
             sAll = ConfigurationManager.AppSettings
             s = sAll("enableInvoiceReposting")
             enableInvoiceReposting = Convert.ToBoolean(s)
+            s = sAll("enableCosReposting")
+            enableCosReposting = Convert.ToBoolean(s)
 
         Catch Exc As System.Exception
             log.Error("SapAccRibbon_Load - " & "Exception=" & Exc.ToString)
@@ -131,6 +134,11 @@ Public Class SapAccRibbon
             Globals.Ribbons.SapAccRibbon.Invoice.Visible = False
         Else
             Globals.Ribbons.SapAccRibbon.Invoice.Visible = True
+        End If
+        If Not enableCosReposting Then
+            Globals.Ribbons.SapAccRibbon.Cos_Split.Visible = False
+        Else
+            Globals.Ribbons.SapAccRibbon.Cos_Split.Visible = True
         End If
     End Sub
 
@@ -273,7 +281,7 @@ Public Class SapAccRibbon
                     ' only convert and process the data of documents that have not been processed
                     aDocNr += 1
                     If InStr(1, aDws.Cells(i, aMsgClmnNr).Value, "BKPFF") = 0 Then
-                        Dim aTSAP_DocData As New TSAP_DocData(aAccPar, aIntPar)
+                        Dim aTSAP_DocData As New TSAP_DocData(aAccPar, aIntPar, aSAPAcctngDocument, pTest)
                         If aTSAP_DocData.fillHeader(aAccItems) And aTSAP_DocData.fillData(aAccItems) Then
                             ' check if we should dump this document
                             If aDocNr = aDumpDocNr Then
@@ -618,5 +626,176 @@ Public Class SapAccRibbon
 
         '        aMigHelper.saveToConfig()
     End Sub
+
+    Const CTot = 12 'column total value
+    Const CLast = 41 'column of last value
+    Const DataColumns = 57 'relevant columns in sheet SAP-Acc-Data
+
+    Private Sub ButtonGeneratePostings_Click(sender As Object, e As RibbonControlEventArgs) Handles ButtonGeneratePostings.Click
+        Dim aIWs As Excel.Worksheet
+        Dim aDWs As Excel.Worksheet
+        Dim aAccWS As Excel.Worksheet
+        Dim aWB As Excel.Workbook
+        Dim aAccDic As New Dictionary(Of String, String)
+        Dim aScaleDic As New Dictionary(Of String, Double)
+        Dim aBasisLine As New Dictionary(Of String, SAPCommon.TField)
+        Dim aPostingLine As New Dictionary(Of String, SAPCommon.TField)
+        Dim aContraLine As New Dictionary(Of String, SAPCommon.TField)
+        Dim aPostingLines As Collection
+        Dim aAcc As String
+        Dim aScale As Double
+        Dim i As Integer
+        Dim j As Integer
+
+        ' get internal parameters
+        If Not getIntParameters() Then
+            Exit Sub
+        End If
+        Dim aLOff As Integer = If(aIntPar.value("LOFF", "DATA") <> "", CInt(aIntPar.value("LOFF", "DATA")), 4)
+
+        log.Debug("ButtonGenGLData_Click - " & "Invoice Sheet")
+        aWB = Globals.SapAccAddIn.Application.ActiveWorkbook
+        Try
+            aIWs = aWB.Worksheets("Basis")
+        Catch Exc As System.Exception
+            log.Warn("ButtonGenGLData_Click - " & "No Basis Sheet in current workbook.")
+            MsgBox("No Basis Sheet in current workbook. Check if the current workbook is a valid Template",
+                   MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "Sap Accounting")
+            Exit Sub
+        End Try
+        aIWs.Activate()
+
+        Dim aAccKey As String
+        ' get the account mapping
+        Try
+            aAccWS = aWB.Worksheets("Mapping")
+        Catch Exc As System.Exception
+            log.Warn("ButtonGenGLData_Click - " & "No Mapping Sheet in current workbook.")
+            MsgBox("No Mapping Sheet in current workbook. Check if the current workbook is a valid Template",
+                   MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "Sap Accounting")
+            Exit Sub
+        End Try
+        i = 2
+        Do
+            aAccKey = CStr(aAccWS.Cells(i, 1).Value)
+            aAccDic.Add(aAccKey, CStr(aAccWS.Cells(i, 2).Value))
+            aScaleDic.Add(aAccKey, CDbl(aAccWS.Cells(i, 3).Value))
+            i += 1
+        Loop While Not String.IsNullOrEmpty(CStr(aAccWS.Cells(i, 1).Value))
+
+        ' process the data
+        Dim aBasItems As New TData(aIntPar)
+        Dim aBasItem As New TDataRec
+        Dim lineKey As String
+        Dim aRestRange As Excel.Range
+        Dim aSumRest As Double
+        Dim aPost As String
+
+        Try
+            log.Debug("ButtonGenGLData_Click - " & "processing data - disabling events, screen update, cursor")
+            Globals.SapAccAddIn.Application.Cursor = Microsoft.Office.Interop.Excel.XlMousePointer.xlWait
+            Globals.SapAccAddIn.Application.EnableEvents = False
+            Globals.SapAccAddIn.Application.ScreenUpdating = False
+            ' read the invoice reposting lines
+            i = 2
+            Do
+                For j = CTot To CLast
+                    aAccKey = CStr(aIWs.Cells(1, j).Value)
+                    aAcc = aAccDic.Item(aAccKey)
+                    aScale = aScaleDic.Item(aAccKey)
+                    aRestRange = aIWs.Range(aIWs.Cells(i, j + 1), aIWs.Cells(i, CLast))
+                    aSumRest = totalAbs(aRestRange)
+                    If aSumRest = 0 Or j = CLast Then
+                        aPost = "X"
+                    Else
+                        aPost = ""
+                    End If
+                    If CDbl(aIWs.Cells(i, j).Value) <> 0 Then
+                        lineKey = CStr(i) + "_" + CStr(j)
+                        aBasItems.addValue(lineKey, "INT-ACCTYPE", "S", "", "")
+                        aBasItems.addValue(lineKey, "INT-ACCOUNT", aAcc, "", "")
+                        aBasItems.addValue(lineKey, "GL-MATERIAL", CStr(aIWs.Cells(i, 3).Value), "", "")
+                        aBasItems.addValue(lineKey, "GL-PLANT", CStr(aIWs.Cells(i, 2).Value), "", "")
+                        aBasItems.addValue(lineKey, "GL+CU+VE-PROFIT_CTR", CStr(aIWs.Cells(i, 4).Value), "", "")
+                        aBasItems.addValue(lineKey, "GL+CU+VE-BUS_AREA", CStr(aIWs.Cells(i, 6).Value), "", "")
+                        aBasItems.addValue(lineKey, "GL-SEGMENT", CStr(aIWs.Cells(i, 5).Value), "", "")
+                        aBasItems.addValue(lineKey, "GL-FUNC_AREA", CStr(aIWs.Cells(i, 8).Value), "", "")
+                        aBasItems.addValue(lineKey, "GL+CU+VE-ITEM_TEXT", CStr(aIWs.Cells(i, 3).Value), "", "")
+                        aBasItems.addValue(lineKey, "A00-AMT_DOCCUR", CDbl(aIWs.Cells(i, j).Value) * aScale, "X", "")
+                        aBasItems.addValue(lineKey, "INT-POST", aPost, "", "")
+                    End If
+                Next j
+                i = i + 1
+            Loop While Not String.IsNullOrEmpty(CStr(aIWs.Cells(i, 1).value))
+
+            'output the posting lines
+            Try
+                aDWs = aWB.Worksheets("SAP-Acc-Data")
+            Catch Exc As System.Exception
+                Globals.SapAccAddIn.Application.EnableEvents = True
+                Globals.SapAccAddIn.Application.ScreenUpdating = True
+                Globals.SapAccAddIn.Application.Cursor = Microsoft.Office.Interop.Excel.XlMousePointer.xlDefault
+                MsgBox("No SAP-Acc-Data Sheet in current workbook. Check if the current workbook is a valid SAP Accounting Template",
+                       MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "Sap Accounting")
+                Exit Sub
+            End Try
+            Dim aRange As Excel.Range
+            If CStr(aDWs.Cells(aLOff + 1, 1).Value) <> "" Then
+                ' aRange = aDWs.Range(aDWs.Cells(aLOff + 1, 1))
+                i = aLOff + 1
+                Do
+                    i += 1
+                Loop While CStr(aDWs.Cells(i, 1).Value) <> ""
+                aRange = aDWs.Range(aDWs.Cells(aLOff + 1, 1), aDWs.Cells(i, 1))
+                aRange.EntireRow.Delete()
+            End If
+            Dim jMax As Integer = 0
+            Do
+                jMax += 1
+            Loop While CStr(aDWs.Cells(aLOff, jMax + 1).value) <> ""
+            Dim aKey As String
+            Dim aValue As String
+            Dim aKvB As KeyValuePair(Of String, TDataRec)
+
+            i = aLOff + 1
+            For Each aKvB In aBasItems.aTDataDic
+                aBasItem = aKvB.Value
+                For j = 1 To jMax
+                    If CStr(aDWs.Cells(1, j).Value) <> "" Then
+                        aKey = CStr(aDWs.Cells(1, j).Value)
+                        If aBasItem.aTDataRecCol.Contains(aKey) Then
+                            aValue = aBasItem.aTDataRecCol(aKey).Value
+                            If aBasItem.aTDataRecCol(aKey).Currency = "X" And aValue <> "" Then
+                                aDWs.Cells(i, j).Value = CDbl(aValue)
+                            Else
+                                aDWs.Cells(i, j).Value = aValue
+                            End If
+                        End If
+                    End If
+                Next j
+                i += 1
+            Next
+            Globals.SapAccAddIn.Application.EnableEvents = True
+            Globals.SapAccAddIn.Application.ScreenUpdating = True
+            Globals.SapAccAddIn.Application.Cursor = Microsoft.Office.Interop.Excel.XlMousePointer.xlDefault
+            aDWs.Activate()
+        Catch ex As System.Exception
+            Globals.SapAccAddIn.Application.EnableEvents = True
+            Globals.SapAccAddIn.Application.ScreenUpdating = True
+            Globals.SapAccAddIn.Application.Cursor = Microsoft.Office.Interop.Excel.XlMousePointer.xlDefault
+            MsgBox("ButtonGenGLData_Click failed! " & ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "Sap Accounting")
+            log.Error("ButtonGenGLData_Click - " & "Exception=" & ex.ToString)
+            Exit Sub
+        End Try
+
+    End Sub
+
+    Private Function totalAbs(pRange As Excel.Range) As Double
+        Dim aTot As Double
+        For Each cell In pRange
+            aTot = aTot + Math.Abs(CDbl(cell.Value))
+        Next
+        totalAbs = aTot
+    End Function
 
 End Class

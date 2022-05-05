@@ -22,6 +22,74 @@ Public Class SAPAcctngDocument
             MsgBox("New failed! " & ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SAPAcctngDocument")
         End Try
     End Sub
+
+    Public Sub getMeta(ByRef pHdr_Fields() As String, ByRef pGla_Fields() As String, ByRef pCus_Fields() As String, ByRef pVen_Fields() As String, ByRef pTax_Fields() As String, ByRef pAmt_Fields() As String, ByRef pCpd_Fields() As String, pTest As Boolean)
+        Try
+            If pTest Then
+                log.Debug("post - " & "creating Function BAPI_ACC_DOCUMENT_CHECK")
+                oRfcFunction = destination.Repository.CreateFunction("BAPI_ACC_DOCUMENT_CHECK")
+            Else
+                log.Debug("post - " & "creating Function BAPI_ACC_DOCUMENT_POST")
+                oRfcFunction = destination.Repository.CreateFunction("BAPI_ACC_DOCUMENT_POST")
+            End If
+            Dim oDocumentHeader As IRfcStructure = oRfcFunction.GetStructure("DOCUMENTHEADER")
+            Dim oCustomerCPD As IRfcStructure = oRfcFunction.GetStructure("CUSTOMERCPD")
+            Dim oAccountGl As IRfcTable = oRfcFunction.GetTable("ACCOUNTGL")
+            Dim oAccountTax As IRfcTable = oRfcFunction.GetTable("ACCOUNTTAX")
+            Dim oAccountPayable As IRfcTable = oRfcFunction.GetTable("ACCOUNTPAYABLE")
+            Dim oAccountReceivable As IRfcTable = oRfcFunction.GetTable("ACCOUNTRECEIVABLE")
+            Dim oCurrencyAmount As IRfcTable = oRfcFunction.GetTable("CURRENCYAMOUNT")
+            ' Hdr_Fields
+            pHdr_Fields = {}
+            For i As Integer = 0 To oDocumentHeader.Metadata.FieldCount - 1
+                Array.Resize(pHdr_Fields, pHdr_Fields.Length + 1)
+                pHdr_Fields(pHdr_Fields.Length - 1) = oDocumentHeader.Metadata(i).Name
+            Next
+            ' Cpd_Fields
+            pCpd_Fields = {}
+            For i As Integer = 0 To oCustomerCPD.Metadata.FieldCount - 1
+                Array.Resize(pCpd_Fields, pCpd_Fields.Length + 1)
+                pCpd_Fields(pCpd_Fields.Length - 1) = oCustomerCPD.Metadata(i).Name
+            Next
+            ' Gla_Fields - skip first field which is the ITEMNO_ACC
+            pGla_Fields = {}
+            For i As Integer = 1 To oAccountGl.Metadata.LineType.FieldCount - 1
+                Array.Resize(pGla_Fields, pGla_Fields.Length + 1)
+                pGla_Fields(pGla_Fields.Length - 1) = oAccountGl.Metadata.LineType(i).Name
+            Next
+            ' Cus_Fields - skip first field which is the ITEMNO_ACC
+            pCus_Fields = {}
+            For i As Integer = 1 To oAccountReceivable.Metadata.LineType.FieldCount - 1
+                Array.Resize(pCus_Fields, pCus_Fields.Length + 1)
+                pCus_Fields(pCus_Fields.Length - 1) = oAccountReceivable.Metadata.LineType(i).Name
+            Next
+            ' Ven_Fields - skip first field which is the ITEMNO_ACC
+            pVen_Fields = {}
+            For i As Integer = 1 To oAccountPayable.Metadata.LineType.FieldCount - 1
+                Array.Resize(pVen_Fields, pVen_Fields.Length + 1)
+                pVen_Fields(pVen_Fields.Length - 1) = oAccountPayable.Metadata.LineType(i).Name
+            Next
+            ' Tax_Fields - skip first field which is the ITEMNO_ACC
+            pTax_Fields = {}
+            For i As Integer = 1 To oAccountTax.Metadata.LineType.FieldCount - 1
+                Array.Resize(pTax_Fields, pTax_Fields.Length + 1)
+                pTax_Fields(pTax_Fields.Length - 1) = oAccountTax.Metadata.LineType(i).Name
+            Next
+            ' Amt_Fields - skip first field which is the ITEMNO_ACC
+            pAmt_Fields = {}
+            For i As Integer = 1 To oCurrencyAmount.Metadata.LineType.FieldCount - 1
+                Array.Resize(pAmt_Fields, pAmt_Fields.Length + 1)
+                pAmt_Fields(pAmt_Fields.Length - 1) = oCurrencyAmount.Metadata.LineType(i).Name
+            Next
+        Catch Ex As System.Exception
+            log.Error("getMeta - Exception=" & Ex.ToString)
+            MsgBox("Error: Exception " & Ex.Message, MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SAPAcctngDocument")
+        Finally
+            log.Debug("getMeta - " & "EndContext")
+            RfcSessionManager.EndContext(destination)
+        End Try
+    End Sub
+
     Public Function post(ByRef pTSAP_DocData As TSAP_DocData, pTest As Boolean) As String
         Dim aSAPCalcTaxesFromGross As New SAPCalcTaxesFromGross(sapcon)
         Dim aSapFormat As New SAPCommon.SAPFormat()

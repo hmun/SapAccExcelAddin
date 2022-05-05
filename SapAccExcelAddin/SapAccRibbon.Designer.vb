@@ -49,12 +49,15 @@
         Me.Invoice = Me.Factory.CreateRibbonGroup
         Me.ButtonReadInvoices = Me.Factory.CreateRibbonButton
         Me.ButtonGenGLData = Me.Factory.CreateRibbonButton
+        Me.Cos_Split = Me.Factory.CreateRibbonGroup
+        Me.ButtonGeneratePostings = Me.Factory.CreateRibbonButton
         Me.Logon = Me.Factory.CreateRibbonGroup
         Me.ButtonLogon = Me.Factory.CreateRibbonButton
         Me.ButtonLogoff = Me.Factory.CreateRibbonButton
         Me.SapAcc.SuspendLayout()
         Me.Accounting.SuspendLayout()
         Me.Invoice.SuspendLayout()
+        Me.Cos_Split.SuspendLayout()
         Me.Logon.SuspendLayout()
         Me.SuspendLayout()
         '
@@ -62,6 +65,7 @@
         '
         Me.SapAcc.Groups.Add(Me.Accounting)
         Me.SapAcc.Groups.Add(Me.Invoice)
+        Me.SapAcc.Groups.Add(Me.Cos_Split)
         Me.SapAcc.Groups.Add(Me.Logon)
         Me.SapAcc.Label = "SAP FI"
         Me.SapAcc.Name = "SapAcc"
@@ -110,6 +114,17 @@
         Me.ButtonGenGLData.ScreenTip = "Generate the GL Posting Data"
         Me.ButtonGenGLData.ShowImage = True
         '
+        'Cos_Split
+        '
+        Me.Cos_Split.Items.Add(Me.ButtonGeneratePostings)
+        Me.Cos_Split.Label = "COS Split"
+        Me.Cos_Split.Name = "Cos_Split"
+        '
+        'ButtonGeneratePostings
+        '
+        Me.ButtonGeneratePostings.Label = "Generate Postings"
+        Me.ButtonGeneratePostings.Name = "ButtonGeneratePostings"
+        '
         'Logon
         '
         Me.Logon.Items.Add(Me.ButtonLogon)
@@ -142,6 +157,8 @@
         Me.Accounting.PerformLayout()
         Me.Invoice.ResumeLayout(False)
         Me.Invoice.PerformLayout()
+        Me.Cos_Split.ResumeLayout(False)
+        Me.Cos_Split.PerformLayout()
         Me.Logon.ResumeLayout(False)
         Me.Logon.PerformLayout()
         Me.ResumeLayout(False)
@@ -158,6 +175,8 @@
     Friend WithEvents Invoice As Microsoft.Office.Tools.Ribbon.RibbonGroup
     Friend WithEvents ButtonReadInvoices As Microsoft.Office.Tools.Ribbon.RibbonButton
     Friend WithEvents ButtonGenGLData As Microsoft.Office.Tools.Ribbon.RibbonButton
+    Friend WithEvents Cos_Split As Microsoft.Office.Tools.Ribbon.RibbonGroup
+    Friend WithEvents ButtonGeneratePostings As Microsoft.Office.Tools.Ribbon.RibbonButton
 End Class
 
 Partial Class ThisRibbonCollection
