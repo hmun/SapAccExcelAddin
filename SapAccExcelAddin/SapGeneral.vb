@@ -65,7 +65,7 @@ Public Class SapGeneral
         checkVersion = True
     End Function
 
-    Public Function CheckVersionInSAP(ByRef pSapCon As SapCon) As Integer
+    Public Function CheckVersionInSAP(ByRef pSapCon As SapConHelper) As Integer
         Dim aSapCon As Object = Nothing
         Dim aRet As Boolean
         Try

@@ -9,9 +9,9 @@ Public Class SAPAcctngDocument
     Private Shared ReadOnly log As log4net.ILog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     Private oRfcFunction As IRfcFunction
     Private destination As RfcCustomDestination
-    Private sapcon As SapCon
+    Private sapcon As SapConHelper
 
-    Sub New(aSapCon As SapCon)
+    Sub New(aSapCon As SapConHelper)
         Try
             log.Debug("New - " & "checking connection")
             sapcon = aSapCon
@@ -168,7 +168,7 @@ Public Class SAPAcctngDocument
                             oAccountGl.SetValue(aTStrRec.Fieldname, aTStrRec.formated())
                             If aTStrRec.Fieldname = "TAX_CODE" Then
                                 lTaxCode = aTStrRec.Value
-                            ElseIf aTStrRec.Fieldname = "TAX_CODE" Then
+                            ElseIf aTStrRec.Fieldname = "TAXJURCODE" Then
                                 lTaxJurCode = aTStrRec.Value
                             End If
                         Case "ACCOUNTRECEIVABLE"
@@ -255,6 +255,7 @@ Public Class SAPAcctngDocument
                                                                             oCurrencyAmount.CurrentRow("AMT_DOCCUR").GetDouble(), lTaxJurCode)
                             oAccountTax.SetValue("COND_KEY", lCondKey)
                             oAccountTax.SetValue("TAX_CODE", lTaxCode)
+                            oAccountTax.SetValue("TAXJURCODE", lTaxJurCode)
                             oAccountTax.SetValue("DIRECT_TAX", "X")
                             oAccountTaxAppended = True
                         End If

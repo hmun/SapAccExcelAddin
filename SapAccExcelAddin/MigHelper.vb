@@ -1,4 +1,4 @@
-﻿' Copyright 2016-2019 Hermann Mundprecht
+﻿' Copyright 2016-2013 Hermann Mundprecht
 ' This file is licensed under the terms of the license 'CC BY 4.0'. 
 ' For a human readable version of the license, see https://creativecommons.org/licenses/by/4.0/
 
@@ -11,26 +11,43 @@ Imports SAPCommon
 Public Class MigHelper
     Public mig As SAPCommon.Migration
     Private Shared ReadOnly log As log4net.ILog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+    Private aFilterField As String = ""
+    Private aFilterOperatiion As String = ""
+    Private aFilterCompare As String = ""
 
-    Public Sub New(uselocal As Boolean)
+    Public Sub New(ByRef pPar As SAPCommon.TStr, pNr As String, Optional pFilterStr As String = "", Optional pUselocal As Boolean = False)
         Dim aWs As Excel.Worksheet
         Dim aWB As Excel.Workbook
         Dim configFile As String = ""
+        ' set Filter Fields
+        If Not String.IsNullOrEmpty(pFilterStr) Then
+            Dim aFilterStr() As String = {}
+            aFilterStr = pFilterStr.Split(";")
+            If aFilterStr.Length = 3 Then
+                aFilterField = aFilterStr(0)
+                aFilterOperatiion = aFilterStr(1)
+                aFilterCompare = aFilterStr(2)
+                If aFilterCompare.ToUpper() = "NULL" Then
+                    aFilterCompare = ""
+                End If
+            End If
+        End If
         ' Check for local rules first
-        If Not uselocal Then
+        If Not pUselocal Then
+            log.Debug("MigHelper.New - using XML rules")
             Dim assemblyName As System.Reflection.AssemblyName = System.Reflection.Assembly.GetExecutingAssembly().GetName()
             Dim assembly As String = assemblyName.Name
             Dim appData As String = GetFolderPath(Environment.SpecialFolder.ApplicationData)
-            configFile = Uri.UnescapeDataString(appData & "\SapExcel\" & assembly & "\inv_mig_rules.config")
+            configFile = Uri.UnescapeDataString(appData & "\SapExcel\" & assembly & "\mig_rules" & pNr & ".config")
             log.Debug("New - " & "looking for config file=" & configFile)
             If Not System.IO.File.Exists(configFile) Then
                 appData = GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
-                configFile = Uri.UnescapeDataString(appData & "\SapExcel\" & assembly & "\inv_mig_rules.config")
+                configFile = Uri.UnescapeDataString(appData & "\SapExcel\" & assembly & "\mig_rules" & pNr & ".config")
                 log.Debug("New - " & "looking for config file=" & configFile)
                 If Not System.IO.File.Exists(configFile) Then
                     appData = New Uri(System.Reflection.Assembly.GetExecutingAssembly().CodeBase).AbsolutePath
                     appData = Path.GetDirectoryName(appData)
-                    configFile = Uri.UnescapeDataString(appData & "\inv_mig_rules.config")
+                    configFile = Uri.UnescapeDataString(appData & "\mig_rules" & pNr & ".config")
                     log.Debug("New - " & "looking for config file=" & configFile)
                     If Not System.IO.File.Exists(configFile) Then
                         configFile = ""
@@ -44,62 +61,83 @@ Public Class MigHelper
             mig = New SAPCommon.Migration(configFile)
         Else
             log.Debug("New - " & "No config file found looking for config worksheets")
+            Dim aRwsName As String = If(pPar.value("GEN" & pNr, "WS_RULES") <> "", pPar.value("GEN" & pNr, "WS_RULES"), "Rules")
+            Dim aPwsName As String = If(pPar.value("GEN" & pNr, "WS_PATTERN") <> "", pPar.value("GEN" & pNr, "WS_PATTERN"), "Pattern")
+            Dim aCwsName As String = If(pPar.value("GEN" & pNr, "WS_CONSTANT") <> "", pPar.value("GEN" & pNr, "WS_CONSTANT"), "Constant")
+            Dim aMwsName As String = If(pPar.value("GEN" & pNr, "WS_MAPPING") <> "", pPar.value("GEN" & pNr, "WS_MAPPING"), "Mapping")
+            Dim aFwsName As String = If(pPar.value("GEN" & pNr, "WS_FORMULA") <> "", pPar.value("GEN" & pNr, "WS_FORMULA"), "Formula")
             mig = New SAPCommon.Migration()
             ' try to read the rules from the excel workbook
             Dim i As Integer
             aWB = Globals.SapAccAddIn.Application.ActiveWorkbook
             Try
-                aWs = aWB.Worksheets("Rules")
+                aWs = aWB.Worksheets(aRwsName)
                 i = 2
                 Do While CStr(aWs.Cells(i, 1).value) <> ""
                     mig.AddRule(CStr(aWs.Cells(i, 1).Value), CStr(aWs.Cells(i, 2).Value), CStr(aWs.Cells(i, 3).Value), CStr(aWs.Cells(i, 4).Value))
+                    If CStr(aWs.Cells(i, 3).Value = "C" And Not String.IsNullOrEmpty(CStr(aWs.Cells(i, 5).Value))) Then
+                        mig.AddConstant(CStr(aWs.Cells(i, 1).Value), CStr(aWs.Cells(i, 2).Value), CStr(aWs.Cells(i, 5).Value))
+                    End If
+                    If CStr(aWs.Cells(i, 3).Value = "P" And Not String.IsNullOrEmpty(CStr(aWs.Cells(i, 5).Value))) Then
+                        mig.AddPattern(CStr(aWs.Cells(i, 1).Value), CStr(aWs.Cells(i, 2).Value), CStr(aWs.Cells(i, 5).Value))
+                    End If
+                    If CStr(aWs.Cells(i, 3).Value = "F" And Not String.IsNullOrEmpty(CStr(aWs.Cells(i, 5).Value))) Then
+                        mig.AddFormula(CStr(aWs.Cells(i, 1).Value), CStr(aWs.Cells(i, 2).Value), CStr(aWs.Cells(i, 5).Value))
+                    End If
                     i += 1
                 Loop
             Catch Exc As System.Exception
-                MsgBox("No Rules Sheet in current workbook.",
-                   MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "Sap Accounting, MigHelper")
+                MsgBox("No " & aRwsName & " Rules Sheet in current workbook.",
+                   MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "Sap, MigHelper")
             End Try
             Try
-                aWs = aWB.Worksheets("Constant")
+                aWs = aWB.Worksheets(aPwsName)
+                i = 2
+                Do While CStr(aWs.Cells(i, 1).value) <> ""
+                    mig.AddPattern(CStr(aWs.Cells(i, 1).Value), CStr(aWs.Cells(i, 2).Value), CStr(aWs.Cells(i, 3).Value))
+                    i += 1
+                Loop
+            Catch Exc As System.Exception
+                log.Debug("New - " & "No " & aPwsName & " Sheet in current workbook.")
+            End Try
+            Try
+                aWs = aWB.Worksheets(aCwsName)
                 i = 2
                 Do While CStr(aWs.Cells(i, 1).value) <> ""
                     mig.AddConstant(CStr(aWs.Cells(i, 1).Value), CStr(aWs.Cells(i, 2).Value), CStr(aWs.Cells(i, 3).Value))
                     i += 1
                 Loop
             Catch Exc As System.Exception
-                MsgBox("No Constant Sheet in current workbook.",
-                   MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "Sap Accounting, MigHelper")
+                log.Debug("New - " & "No " & aCwsName & " Sheet in current workbook.")
             End Try
             Try
-                aWs = aWB.Worksheets("Formula")
+                aWs = aWB.Worksheets(aFwsName)
                 i = 2
                 Do While CStr(aWs.Cells(i, 1).value) <> ""
                     mig.AddFormula(CStr(aWs.Cells(i, 1).Value), CStr(aWs.Cells(i, 2).Value), CStr(aWs.Cells(i, 3).Value))
                     i += 1
                 Loop
             Catch Exc As System.Exception
-                MsgBox("No Formula Sheet in current workbook.",
-                   MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "Sap Accounting, MigHelper")
+                log.Debug("New - " & "No " & aFwsName & " Sheet in current workbook.")
             End Try
             Try
-                aWs = aWB.Worksheets("Mapping")
+                aWs = aWB.Worksheets(aMwsName)
                 i = 2
                 Do While CStr(aWs.Cells(i, 1).value) <> ""
                     mig.AddMapping(CStr(aWs.Cells(i, 2).Value), CStr(aWs.Cells(i, 1).Value), CStr(aWs.Cells(i, 3).Value), CStr(aWs.Cells(i, 4).Value))
                     i += 1
                 Loop
             Catch Exc As System.Exception
-                MsgBox("No Formula Sheet in current workbook.",
-                   MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "Sap Accounting, MigHelper")
+                log.Debug("New - " & "No " & aMwsName & " Sheet in current workbook.")
             End Try
         End If
     End Sub
 
-    Sub saveToConfig()
+    Sub saveToConfig(pNr As String)
         Dim assemblyName As System.Reflection.AssemblyName = System.Reflection.Assembly.GetExecutingAssembly().GetName()
         Dim assembly As String = assemblyName.Name
         Dim appData As String = GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
-        Dim configFile As String = appData & "\SapExcel\" & assembly & "\inv_mig_rules.config"
+        Dim configFile As String = appData & "\SapExcel\" & assembly & "\mig_rules" & pNr & ".config"
         Dim config As Configuration
         Dim configMap As New ExeConfigurationFileMap
         configMap.ExeConfigFilename = configFile
@@ -108,6 +146,23 @@ Public Class MigHelper
         mig.MRS.SectionInformation.ForceSave = True
         config.Save(ConfigurationSaveMode.Full)
     End Sub
+
+    Public Function isFiltered(ByRef pBaseRecord As Dictionary(Of String, SAPCommon.TField)) As Boolean
+        Dim aField As SAPCommon.TField
+        isFiltered = False
+        If pBaseRecord.ContainsKey(aFilterField) Then
+            aField = pBaseRecord(aFilterField)
+            If aFilterOperatiion = "EQ" And aField.Value = aFilterCompare Then
+                isFiltered = True
+            ElseIf aFilterOperatiion = "NE" And aField.Value <> aFilterCompare Then
+                isFiltered = True
+            End If
+        Else
+            If aFilterOperatiion = "NE" And (String.IsNullOrEmpty(aFilterCompare) Or aFilterCompare = "#") Then
+                isFiltered = False
+            End If
+        End If
+    End Function
 
     Public Function makeDictForRules(ByRef pWs As Excel.Worksheet, pRow As Integer, pHeaderRow As Integer, pFromCol As Integer, pToCol As Integer) As Dictionary(Of String, SAPCommon.TField)
         Dim retDict As New Dictionary(Of String, SAPCommon.TField)

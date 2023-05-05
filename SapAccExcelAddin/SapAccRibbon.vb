@@ -28,7 +28,7 @@ Public Class SapAccRibbon
         log.Debug("ButtonCheckAccDoc_Click - " & "checking Connection")
         aSapConRet = 0
         If aSapCon Is Nothing Then
-            aSapCon = New SapCon()
+            aSapCon = New SapConHelper()
         End If
         aSapConRet = aSapCon.checkCon()
         If aSapConRet = 0 Then
@@ -59,7 +59,7 @@ Public Class SapAccRibbon
         log.Debug("ButtonPostAccDoc_Click - " & "checking Connection")
         aSapConRet = 0
         If aSapCon Is Nothing Then
-            aSapCon = New SapCon()
+            aSapCon = New SapConHelper()
         End If
         aSapConRet = aSapCon.checkCon()
         If aSapConRet = 0 Then
@@ -100,7 +100,7 @@ Public Class SapAccRibbon
         End If
         log.Debug("ButtonLogon_Click - " & "creating SapCon")
         If aSapCon Is Nothing Then
-            aSapCon = New SapCon()
+            aSapCon = New SapConHelper()
         End If
         log.Debug("ButtonLogon_Click - " & "calling SapCon.checkCon()")
         aConRet = aSapCon.checkCon()
@@ -112,7 +112,6 @@ Public Class SapAccRibbon
             aSapCon = Nothing
         End If
     End Sub
-
 
     Private Sub SapAccRibbon_Load(ByVal sender As System.Object, ByVal e As RibbonUIEventArgs) Handles MyBase.Load
         Dim sAll As NameValueCollection
@@ -360,7 +359,7 @@ Public Class SapAccRibbon
         log.Debug("ButtonReadInvoices_Click - " & "checking Connection")
         aSapConRet = 0
         If aSapCon Is Nothing Then
-            aSapCon = New SapCon()
+            aSapCon = New SapConHelper()
         End If
         aSapConRet = aSapCon.checkCon()
         If aSapConRet = 0 Then
@@ -485,6 +484,23 @@ Public Class SapAccRibbon
     End Sub
 
     Private Sub ButtonGenGLData_Click(sender As Object, e As RibbonControlEventArgs) Handles ButtonGenGLData.Click
+        ' get internal parameters
+        If Not getIntParameters() Then
+            log.Error("ButtonGenerate_Click getIntParameters - " & "failed - exit")
+            Exit Sub
+        End If
+        ' get the ruleset limits
+        Dim aGenNrFrom As Integer = If(aIntPar.value("GEN", "RULESET_FROM") <> "", CInt(aIntPar.value("GEN", "RULESET_FROM")), 0)
+        Dim aGenNrTo As Integer = If(aIntPar.value("GEN", "RULESET_TO") <> "", CInt(aIntPar.value("GEN", "RULESET_TO")), 0)
+        Dim aGenNr As String = ""
+        For i As Integer = aGenNrFrom To aGenNrTo
+            Dim aNr As String = If(i = 0, "", CStr(i))
+            ButtonGenGLData_exec(pSapCon:=aSapCon, pNr:=aNr)
+        Next
+    End Sub
+
+
+    Private Sub ButtonGenGLData_exec(ByRef pSapCon As SapConHelper, Optional pNr As String = "")
         Dim aMigHelper As MigHelper
         Dim aBasis As New Collection
         Dim aBasisLine As New Dictionary(Of String, SAPCommon.TField)
@@ -503,37 +519,62 @@ Public Class SapAccRibbon
         If Not getIntParameters() Then
             Exit Sub
         End If
-        Dim aLOff As Integer = If(aIntPar.value("LOFF", "DATA") <> "", CInt(aIntPar.value("LOFF", "DATA")), 4)
+        Dim aDwsName As String = If(aIntPar.value("GEN" & pNr, "WS_DATA") <> "", aIntPar.value("GEN" & pNr, "WS_DATA"), "SAP-Acc-Data")
+        Dim aBwsName As String = If(aIntPar.value("GEN" & pNr, "WS_BASE") <> "", aIntPar.value("GEN" & pNr, "WS_BASE"), "InvoiceData")
+        Dim aEmptyChar As String = If(aIntPar.value("GEN" & pNr, "CHAR_EMPTY") <> "", aIntPar.value("GEN" & pNr, "CHAR_EMPTY"), "#")
+        Dim aIgnoreEmpty As String = If(aIntPar.value("GEN" & pNr, "IGNORE_EMPTY") <> "", aIntPar.value("GEN" & pNr, "IGNORE_EMPTY"), "X")
+        Dim aGenEmpty As Boolean = If(aIgnoreEmpty = "X", False, True)
+        Dim aDeleteData As String = If(aIntPar.value("GEN" & pNr, "DELETE_DATA") <> "", aIntPar.value("GEN" & pNr, "DELETE_DATA"), "X")
+        Dim aGenDeleteData As Boolean = If(aDeleteData = "X", True, False)
+        Dim aLOff As Integer = If(aIntPar.value("GEN" & pNr, "LOFF_DATA") <> "", CInt(aIntPar.value("GEN" & pNr, "LOFF_DATA")), 4)
+        Dim aLOffBData As Integer = If(aIntPar.value("GEN" & pNr, "LOFF_BDATA") <> "", CInt(aIntPar.value("GEN" & pNr, "LOFF_BDATA")), 1)
+        Dim aLOffBNames As Integer = If(aIntPar.value("GEN" & pNr, "LOFF_BNAMES") <> "", CInt(aIntPar.value("GEN" & pNr, "LOFF_BNAMES")), 0)
+        Dim aLOffTNames As Integer = If(aIntPar.value("GEN" & pNr, "LOFF_TNAMES") <> "", CInt(aIntPar.value("GEN" & pNr, "LOFF_TNAMES")), aLOff - 1)
+        Dim aLineOut As Integer = If(aIntPar.value("GEN" & pNr, "LINE_OUT") <> "", CInt(aIntPar.value("GEN" & pNr, "LINE_OUT")), 0)
+        Dim aBaseColFrom As Integer = If(aIntPar.value("GEN" & pNr, "BASE_COLFROM") <> "", CInt(aIntPar.value("GEN" & pNr, "BASE_COLFROM")), 1)
+        Dim aBaseColTo As Integer = If(aIntPar.value("GEN" & pNr, "BASE_COLTO") <> "", CInt(aIntPar.value("GEN" & pNr, "BASE_COLTO")), 100)
+        Dim aBaseFilter As String = If(aIntPar.value("GEN" & pNr, "BASE_FILTER") <> "", CStr(aIntPar.value("GEN" & pNr, "BASE_FILTER")), "")
+        Dim aTargetFilter As String = If(aIntPar.value("GEN" & pNr, "TARGET_FILTER") <> "", CStr(aIntPar.value("GEN" & pNr, "TARGET_FILTER")), "")
+        ' should we compress posting lines?
+        Dim aGenCompData As String = If(aIntPar.value("GEN", "COMP_DATA") <> "", CStr(aIntPar.value("GEN", "COMP_DATA")), "")
+        Dim aCompress As Boolean = If(aGenCompData = "X", True, False)
+        ' should we suppress line with zero values
+        Dim aGenSupprZero As String = If(aIntPar.value("GEN", "SUPPR_ZERO") <> "", CStr(aIntPar.value("GEN", "SUPPR_ZERO")), "")
+        Dim aSupprZero As Boolean = If(aGenSupprZero = "X", True, False)
 
-        log.Debug("ButtonGenGLData_Click - " & "Invoice Sheet")
+        log.Debug("ButtonGenGLData_Click - " & "Basis Sheet")
         aWB = Globals.SapAccAddIn.Application.ActiveWorkbook
-        Try
-            aPWs = aWB.Worksheets("Parameter")
-            If CStr(aPWs.Cells(17, 2).Value) = "X" Then
-                aUselocal = True
-            End If
-        Catch Exc As System.Exception
-            log.Debug("ButtonGenGLData_Click - " & "No Parameter Sheet in current workbook. -> aDoGeneral = True")
-        End Try
+        Dim aGenLocalRules As String = If(aIntPar.value("GEN", "LOCAL_RULES") <> "", CStr(aIntPar.value("GEN", "LOCAL_RULES")), "")
+        If aGenLocalRules = "X" Then
+            aUselocal = True
+            log.Debug("ButtonGenGLData_Click - " & "aUselocal = True")
+        Else
+            ' Fallback for compatibilty to old templates
+            Try
+                aPWs = aWB.Worksheets("Parameter")
+                If CStr(aPWs.Cells(17, 2).Value) = "X" Then
+                    aUselocal = True
+                    log.Debug("ButtonGenGLData_Click - " & "aUselocal = True")
+                End If
+            Catch Exc As System.Exception
+                log.Debug("ButtonGenGLData_Click - " & "No Parameter Sheet in current workbook. -> aUselocal = False")
+            End Try
+        End If
         Try
             aIWs = aWB.Worksheets("InvoiceData")
         Catch Ex As System.Exception
             Try
-                aIWs = aWB.Worksheets("Basis")
+                aIWs = aWB.Worksheets(aBwsName)
                 aUseBasis = True
             Catch Exc As System.Exception
-                log.Warn("ButtonGenGLData_Click - " & "No InvoiceData or Basis Sheet in current workbook.")
-                MsgBox("No InvoiceData Sheet or Basis Sheet in current workbook. Check if the current workbook is a valid Template",
+                log.Warn("ButtonGenGLData_Click - " & "No InvoiceData or " & aBwsName & " in current workbook.")
+                MsgBox("No InvoiceData Sheet or " & aBwsName & " in current workbook. Check if the current workbook is a valid Template",
                    MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "Sap Accounting")
                 Exit Sub
             End Try
         End Try
         aIWs.Activate()
-        If aUselocal Then
-            aMigHelper = New MigHelper(uselocal:=True)
-        Else
-            aMigHelper = New MigHelper(uselocal:=False)
-        End If
+        aMigHelper = New MigHelper(pPar:=aIntPar, pNr:=pNr, pFilterStr:=aBaseFilter, pUselocal:=aUselocal)
         ' process the data
         Try
             log.Debug("ButtonGenGLData_Click - " & "processing data - disabling events, screen update, cursor")
@@ -541,50 +582,70 @@ Public Class SapAccRibbon
             Globals.SapAccAddIn.Application.EnableEvents = False
             Globals.SapAccAddIn.Application.ScreenUpdating = False
             ' read the invoice reposting lines
-            i = 2
+            i = aLOffBData + 1
             Do
                 If aUseBasis _
                     Or CStr(aIWs.Cells(i, ColNew).value) <> "" Or CStr(aIWs.Cells(i, ColNew + 1).value) <> "" Or CStr(aIWs.Cells(i, ColNew + 2).value) <> "" _
                     Or CStr(aIWs.Cells(i, ColNew + 3).value) <> "" Or CStr(aIWs.Cells(i, ColNew + 4).value) <> "" Or CStr(aIWs.Cells(i, ColNew + 5).value) <> "" Then
-                    aBasisLine = aMigHelper.makeDictForRules(aIWs, i, 1, 1, 100)
-                    aBasis.Add(aBasisLine)
+                    aBasisLine = aMigHelper.makeDictForRules(aIWs, i, aLOffBNames + 1, aBaseColFrom, aBaseColTo)
+                    If Not aMigHelper.isFiltered(aBasisLine) Then
+                        aBasis.Add(aBasisLine)
+                    End If
                 End If
                 i = i + 1
             Loop While CStr(aIWs.Cells(i, 1).value) <> ""
+
+            Dim aTPostingData As New TPostingData(aIntPar)
+            Dim aTPostingDataRec As TPostingDataRec
+            Dim aTPostingDataRecKey As String
+            Dim aTPostingDataRecNum As UInt64 = 1
             ' create the posting lines
             aPostingLines = New Collection
             For Each aBasisLine In aBasis
                 aPostingLine = aMigHelper.mig.ApplyRules(aBasisLine, "P")
-                aPostingLines.Add(aPostingLine)
+                If aPostingLine.Count > 0 Then
+                    aTPostingDataRec = aTPostingData.newTPostingDataRec(pDic:=aPostingLine, pEmpty:=aGenEmpty, pEmptyChar:=aEmptyChar)
+                    If aCompress Then
+                        aTPostingDataRecKey = aTPostingDataRec.getKey()
+                    Else
+                        aTPostingDataRecKey = CStr(aTPostingDataRecNum)
+                    End If
+                    aTPostingData.addTPostingDataRec(aTPostingDataRecKey, aTPostingDataRec)
+                    aTPostingDataRecNum += 1
+                End If
                 aContraLine = aMigHelper.mig.ApplyRules(aBasisLine, "C")
-                ' some hard-coding here --> Replaced by RuleType "R" - reverse sign
-                ' If aContraLine("Amount").Value <> "" Then
-                ' aContraLine("Amount").Value = CStr(CDbl(aContraLine("Amount").Value) * -1)
-                ' Else
-                ' aContraLine("Amount").Value = ""
-                ' End If
-                aPostingLines.Add(aContraLine)
+                If aContraLine.Count > 0 Then
+                    aTPostingDataRec = aTPostingData.newTPostingDataRec(pDic:=aContraLine, pEmpty:=aGenEmpty, pEmptyChar:=aEmptyChar)
+                    If aCompress Then
+                        aTPostingDataRecKey = aTPostingDataRec.getKey()
+                    Else
+                        aTPostingDataRecKey = CStr(aTPostingDataRecNum)
+                    End If
+                    aTPostingData.addTPostingDataRec(aTPostingDataRecKey, aTPostingDataRec)
+                    aTPostingDataRecNum += 1
+                End If
             Next
             'output the posting lines
+            Dim aColDelData As Integer = If(aIntPar.value("GEN" & pNr, "DATA_COLDEL") <> "", CInt(aIntPar.value("GEN" & pNr, "DATA_COLDEL")), 1)
             Try
-                aDWs = aWB.Worksheets("SAP-Acc-Data")
+                aDWs = aWB.Worksheets(aDwsName)
             Catch Exc As System.Exception
                 Globals.SapAccAddIn.Application.EnableEvents = True
                 Globals.SapAccAddIn.Application.ScreenUpdating = True
                 Globals.SapAccAddIn.Application.Cursor = Microsoft.Office.Interop.Excel.XlMousePointer.xlDefault
-                MsgBox("No SAP-Acc-Data Sheet in current workbook. Check if the current workbook is a valid SAP Accounting Template",
+                MsgBox("No " & aDwsName & " Sheet in current workbook. Check if the current workbook is a valid SAP Accounting Template",
                    MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "Sap Accounting")
                 Exit Sub
             End Try
             Dim aRange As Excel.Range
-            If CStr(aDWs.Cells(aLOff + 1, 1).Value) <> "" Then
-                ' aRange = aDWs.Range(aDWs.Cells(aLOff + 1, 1))
-                i = aLOff + 1
-                Do
-                    i += 1
-                Loop While CStr(aDWs.Cells(i, 1).Value) <> ""
+            i = aLOff + 1
+            Do
+                i += 1
+            Loop While CStr(aDWs.Cells(i, aColDelData).Value) <> ""
+            If aGenDeleteData And i >= aLOff + 1 Then
                 aRange = aDWs.Range(aDWs.Cells(aLOff + 1, 1), aDWs.Cells(i, 1))
                 aRange.EntireRow.Delete()
+                i = aLOff + 1
             End If
             Dim jMax As Integer = 0
             Do
@@ -592,24 +653,41 @@ Public Class SapAccRibbon
             Loop While CStr(aDWs.Cells(aLOff, jMax + 1).value) <> ""
             Dim aKey As String
             Dim aValue As String
-            i = aLOff + 1
-            For Each aPostingLine In aPostingLines
-                For j = 1 To jMax
-                    If CStr(aDWs.Cells(aLOff, j).Value) <> "" Then
-                        aKey = CStr(aDWs.Cells(aLOff, j).Value)
-                        If aPostingLine.ContainsKey(aKey) Then
-                            aValue = aPostingLine(aKey).Value
-                            If aKey = "Amount" And aValue <> "" Then
-                                aDWs.Cells(i, j).Value = CDbl(aValue)
-                            ElseIf aPostingLine(aKey).FType = "F" Then
-                                aDWs.Cells(i, j).FormulaR1C1 = "=" & CStr(aValue)
-                            Else
-                                aDWs.Cells(i, j).Value = aValue
+            Dim aKvb As KeyValuePair(Of String, TPostingDataRec)
+            i = If(aLineOut <> 0, aLineOut, i)
+            Dim aSuppressLine As Boolean
+            For Each aKvb In aTPostingData.aTPostingDataDic
+                aSuppressLine = False
+                aTPostingDataRec = aKvb.Value
+                If aSupprZero And aTPostingDataRec.isZero Then
+                    aSuppressLine = True
+                End If
+                If Not String.IsNullOrEmpty(aTargetFilter) Then
+                    If isTargetFiltered(aTargetFilter, aTPostingDataRec) Then
+                        aSuppressLine = True
+                    End If
+                End If
+                If Not aSuppressLine Then
+                    For j = 1 To jMax
+                        If CStr(aDWs.Cells(aLOff, j).Value) <> "" Then
+                            aKey = CStr(aDWs.Cells(aLOff, j).Value)
+                            If Not aKey.Contains("-") Then
+                                aKey = "-" & aKey
+                            End If
+                            If aTPostingDataRec.aTPostingDataRecCol.Contains(aKey) Then
+                                aValue = aTPostingDataRec.aTPostingDataRecCol(aKey).Value
+                                If aTPostingDataRec.isValue(aKey) Then
+                                    aDWs.Cells(i, j).Value = CDbl(aValue)
+                                ElseIf aTPostingDataRec.aTPostingDataRecCol(aKey).Format = "F" Then
+                                    aDWs.Cells(i, j).FormulaR1C1 = "=" & CStr(aValue)
+                                Else
+                                    aDWs.Cells(i, j).Value = aValue
+                                End If
                             End If
                         End If
-                    End If
-                Next j
-                i += 1
+                    Next j
+                    i += 1
+                End If
             Next
             Globals.SapAccAddIn.Application.EnableEvents = True
             Globals.SapAccAddIn.Application.ScreenUpdating = True
@@ -623,13 +701,8 @@ Public Class SapAccRibbon
             log.Error("ButtonGenGLData_Click - " & "Exception=" & ex.ToString)
             Exit Sub
         End Try
-
         '        aMigHelper.saveToConfig()
     End Sub
-
-    Const CTot = 12 'column total value
-    Const CLast = 41 'column of last value
-    Const DataColumns = 57 'relevant columns in sheet SAP-Acc-Data
 
     Private Sub ButtonGeneratePostings_Click(sender As Object, e As RibbonControlEventArgs) Handles ButtonGeneratePostings.Click
         Dim aIWs As Excel.Worksheet
@@ -652,6 +725,7 @@ Public Class SapAccRibbon
             Exit Sub
         End If
         Dim aLOff As Integer = If(aIntPar.value("LOFF", "DATA") <> "", CInt(aIntPar.value("LOFF", "DATA")), 4)
+        Dim CTot As Integer = If(aIntPar.value("COL", "COSTOT") <> "", CInt(aIntPar.value("COL", "COSTOT")), 12)
 
         log.Debug("ButtonGenGLData_Click - " & "Invoice Sheet")
         aWB = Globals.SapAccAddIn.Application.ActiveWorkbook
@@ -690,6 +764,11 @@ Public Class SapAccRibbon
         Dim aRestRange As Excel.Range
         Dim aSumRest As Double
         Dim aPost As String
+
+        Dim CLast As Integer = 0
+        Do
+            CLast += 1
+        Loop While CStr(aIWs.Cells(aLOff, CLast + 1).value) <> ""
 
         Try
             log.Debug("ButtonGenGLData_Click - " & "processing data - disabling events, screen update, cursor")
@@ -796,6 +875,40 @@ Public Class SapAccRibbon
             aTot = aTot + Math.Abs(CDbl(cell.Value))
         Next
         totalAbs = aTot
+    End Function
+
+    Private Function isTargetFiltered(pTargetFilterStr As String, pTPostingDataRec As TPostingDataRec) As Boolean
+        Dim aFilterField As String = ""
+        Dim aFilterOperation As String = ""
+        Dim aFilterCompare As String = ""
+        If Not String.IsNullOrEmpty(pTargetFilterStr) Then
+            Dim aFilterStr() As String = {}
+            aFilterStr = pTargetFilterStr.Split(";")
+            If aFilterStr.Length = 3 Then
+                aFilterField = aFilterStr(0)
+                aFilterOperation = aFilterStr(1)
+                aFilterCompare = aFilterStr(2)
+                If aFilterCompare.ToUpper() = "NULL" Then
+                    aFilterCompare = ""
+                End If
+            End If
+        End If
+        isTargetFiltered = False
+        Dim aTStrRec As SAPCommon.TStrRec
+        If pTPostingDataRec.aTPostingDataRecCol.Contains("-" & aFilterField) Then
+            aTStrRec = pTPostingDataRec.aTPostingDataRecCol("-" & aFilterField)
+            If aFilterOperation = "EQ" And aTStrRec.Value = aFilterCompare Then
+                isTargetFiltered = True
+            ElseIf aFilterOperation = "NE" And aTStrRec.Value <> aFilterCompare Then
+                isTargetFiltered = True
+            End If
+        Else
+            If aFilterOperation = "NE" And (String.IsNullOrEmpty(aFilterCompare) Or aFilterCompare = "#") Then
+                isTargetFiltered = False
+            ElseIf aFilterOperation = "EQ" And (String.IsNullOrEmpty(aFilterCompare) Or aFilterCompare = "#") Then
+                isTargetFiltered = True
+            End If
+        End If
     End Function
 
 End Class

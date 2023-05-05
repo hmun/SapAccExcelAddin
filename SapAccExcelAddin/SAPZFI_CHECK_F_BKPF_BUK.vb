@@ -9,9 +9,9 @@ Public Class SAPZFI_CHECK_F_BKPF_BUK
     Private Shared ReadOnly log As log4net.ILog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     Private oRfcFunction As IRfcFunction
     Private destination As RfcCustomDestination
-    Private sapcon As SapCon
+    Private sapcon As SapConHelper
 
-    Sub New(ByRef aSapCon As SapCon)
+    Sub New(ByRef aSapCon As SapConHelper)
         sapcon = aSapCon
         aSapCon.getDestination(destination)
         log.Debug("New - " & "creating Function ZFI_CHECK_F_BKPF_BUK")

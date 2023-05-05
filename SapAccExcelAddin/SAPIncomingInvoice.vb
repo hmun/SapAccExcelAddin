@@ -9,9 +9,9 @@ Public Class SAPIncomingInvoice
     Private Shared ReadOnly log As log4net.ILog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     Private oRfcFunction As IRfcFunction
     Private destination As RfcCustomDestination
-    Private SapCon As SapCon
+    Private SapCon As SapConHelper
 
-    Sub New(ByRef aSapCon As SapCon)
+    Sub New(ByRef aSapCon As SapConHelper)
         SapCon = aSapCon
         aSapCon.getDestination(destination)
         log.Debug("New - " & "creating Function BAPI_INCOMINGINVOICE_GETDETAIL")

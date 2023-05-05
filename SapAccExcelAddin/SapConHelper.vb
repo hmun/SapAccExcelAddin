@@ -3,7 +3,7 @@
 ' For a human readable version of the license, see https://creativecommons.org/licenses/by/4.0/
 
 Imports SAP.Middleware.Connector
-Public Class SapCon
+Public Class SapConHelper
     Const aParamWs As String = "Parameter"
     Const aConnectionWs As String = "SAP-Con"
     Private Shared ReadOnly log As log4net.ILog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
@@ -78,16 +78,19 @@ Public Class SapCon
                 MsgBox("Error reading destination " & _sapcon.Dest & "! Check the connection settings in the sap_connections.config file and the SAP-Con sheet",
                         MsgBoxStyle.OkOnly Or MsgBoxStyle.Critical, "SapCon")
                 checkCon = aRet
+                Exit Function
             End If
         End If
 
         If Not _sapcon.Connected And CStr(_sapcon.Destination.SncMode) = "1" Then
             Dim oForm As New FormLogon
-            Dim aClient As String
-            Dim aUserName As String
-            Dim aPassword As String
-            Dim aLanguage As String
+            Dim aClient As String = ""
+            Dim aUserName As String = ""
+            Dim aSncMyName As String = ""
+            Dim aPassword As String = ""
+            Dim aLanguage As String = ""
             log.Debug("checkCon - " & "connecting using SNC destination")
+            oForm.isSNC = True
             oForm.Destination.Text = _sapcon.Dest
             If Not _sapcon.Destination.Client Is Nothing Then
                 oForm.Client.Text = _sapcon.Destination.Client
@@ -97,18 +100,30 @@ Public Class SapCon
             ElseIf Not _sapcon.Destination.Language Is Nothing Then
                 oForm.Language.Text = _sapcon.Destination.Language
             End If
-            oForm.UserName.Text = _sapcon.Destination.SncMyName
-            oForm.UserName.Enabled = False
+            If Not _sapcon.Destination.SncMyName Is Nothing Then
+                oForm.SNCName.Text = _sapcon.Destination.SncMyName
+            ElseIf My.Settings.SAP_SncMyName IsNot Nothing And My.Settings.SAP_SncMyName <> "" Then
+                oForm.SNCName.Text = My.Settings.SAP_SncMyName
+            End If
+            oForm.UserName.Text = ""
+            oForm.UserName.Enabled = True
             oForm.Password.Enabled = False
             formRet = oForm.ShowDialog()
             If formRet = System.Windows.Forms.DialogResult.OK Then
                 aClient = oForm.Client.Text
-                aUserName = oForm.UserName.Text
+                If Not String.IsNullOrEmpty(oForm.UserName.Text) Then
+                    aUserName = oForm.UserName.Text
+                End If
                 aPassword = oForm.Password.Text
                 aLanguage = oForm.Language.Text
+                If Not String.IsNullOrEmpty(oForm.SNCName.Text) Then
+                    aSncMyName = oForm.SNCName.Text
+                End If
                 My.Settings.SAP_Language = oForm.Language.Text
                 _sapcon.Client = aClient
                 _sapcon.Language = aLanguage
+                _sapcon.SncMyName = aSncMyName
+                _sapcon.Username = aUserName
             End If
         ElseIf Not _sapcon.Connected Then
             Dim oForm As New FormLogon
@@ -122,15 +137,17 @@ Public Class SapCon
             End If
             If My.Settings.SAP_Language IsNot Nothing And My.Settings.SAP_Language <> "" Then
                 oForm.Language.Text = My.Settings.SAP_Language
-            ElseIf Not _sapcon.destination.Language Is Nothing Then
+            ElseIf Not _sapcon.Destination.Language Is Nothing Then
                 oForm.Language.Text = _sapcon.Destination.Language
             End If
+            oForm.isSNC = False
             oForm.Destination.Text = _sapcon.Dest
             oForm.UserName.Enabled = True
             If My.Settings.SAP_User IsNot Nothing Then
                 oForm.UserName.Text = CStr(My.Settings.SAP_User)
             End If
             oForm.Password.Enabled = True
+            oForm.SNCName.Enabled = False
             formRet = oForm.ShowDialog()
             If formRet = System.Windows.Forms.DialogResult.OK Then
                 aClient = oForm.Client.Text
